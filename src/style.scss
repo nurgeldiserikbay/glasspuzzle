@@ -1,0 +1,58 @@
+@use '@/assets/_common.scss';
+
+@font-face {
+	font-family: LuckiestGuy;
+	src: url('./assets/fonts/LuckiestGuy-Regular.ttf') format('truetype');
+	font-style: normal;
+	font-weight: 400;
+}
+
+body {
+	margin: 0;
+	overflow-y: auto;
+	font-family: LuckiestGuy, sans-serif;
+	width: 100dvw;
+	height: 100dvh;
+	overflow: hidden;
+}
+
+i,
+span,
+a,
+button {
+	font-family: LuckiestGuy, sans-serif;
+}
+
+#app {
+	position: relative;
+	width: 100%;
+	min-height: 100dvh;
+	background: #000;
+}
+
+.page {
+	width: 100%;
+	height: 100%;
+	padding: 15px 25px;
+	box-sizing: border-box;
+	position: relative;
+	min-height: 100dvh;
+	max-height: 100dvh;
+	max-width: 720px;
+	margin: 0 auto;
+	background: url('@/assets/img/bg.png');
+	background-size: 100% 100%;
+}
+
+::-webkit-scrollbar-track {
+	-webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+	background-color: transparent;
+}
+
+::-webkit-scrollbar {
+	display: none;
+}
+
+::-webkit-scrollbar-thumb {
+	background-color: #000000;
+}

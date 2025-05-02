@@ -1,0 +1,11 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.thelightcome.glasspuzzle",
+      "sha256_cert_fingerprints":
+        ["A5:A3:54:11:2E:ED:F8:EA:C6:78:5A:42:69:9F:4C:F1:B4:5D:C1:DB:6A:CA:70:45:79:5E:53:E3:7E:AA:CB:C2"]
+    }
+  }
+]

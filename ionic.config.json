@@ -1,0 +1,7 @@
+{
+  "name": "Glass Puzzle",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}
