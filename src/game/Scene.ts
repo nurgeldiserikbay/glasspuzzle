@@ -5,14 +5,14 @@ import { ISceneOpt, ITicker } from './interfaces'
 class Scene {
 	canvas: HTMLCanvasElement
 	app: PIXI.Application
-	private _updates: Map<string, (ticker: ITicker) => void>
 	container: PIXI.Container
+	private _updates: Map<string, (ticker: ITicker) => void>
 
 	constructor({ canvas }: ISceneOpt) {
 		this.canvas = canvas
 		this.app = new PIXI.Application()
-		this._updates = new Map()
 		this.container = new PIXI.Container()
+		this._updates = new Map()
 
 		this.app.stage.addChild(this.container)
 	}
@@ -22,7 +22,7 @@ class Scene {
 		this.canvas.height = this.canvas.clientHeight
 
 		await this.app.init({
-			resolution: window.devicePixelRatio,
+			resolution: window.devicePixelRatio || 1,
 			backgroundAlpha: 0,
 			canvas: this.canvas,
 			width: this.canvas.width,
@@ -33,15 +33,11 @@ class Scene {
 	}
 
 	addElem(graphics: any) {
-		if (graphics) {
-			this.container.addChild(graphics)
-		}
+		if (graphics) this.container.addChild(graphics)
 	}
 
 	removeElem(graphics: any) {
-		if (graphics) {
-			this.container.removeChild(graphics)
-		}
+		if (graphics) this.container.removeChild(graphics)
 	}
 
 	addUpdate(name: string, func: (ticker: ITicker) => void) {

@@ -8,7 +8,6 @@ export interface IPixiContainer extends Container {
 	}
 }
 
-// Game and Builder
 export interface IControlOpt {
 	endGame: () => void
 }
@@ -18,18 +17,15 @@ export interface IGameOpt {
 	option: IControlOpt
 }
 
-// GameController
 export interface IGameControllerOpt {
 	canvas: HTMLCanvasElement
 	option: IControlOpt
 }
 
-// Scene
 export interface ISceneOpt {
 	canvas: HTMLCanvasElement
 }
 
-//Commons
 export interface ITicker {
 	deltaMS: number
 	lastTime: number

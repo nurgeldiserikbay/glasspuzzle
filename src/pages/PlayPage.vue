@@ -35,6 +35,7 @@ const getLevel = computed(() => {
 
 onMounted(async () => {
 	start()
+	document.addEventListener('visibilitychange', handleVisibilityChange)
 	try {
 		if (Capacitor.getPlatform() === 'android') {
 			await Admob.showBanner()
@@ -46,10 +47,19 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	clearTimers()
+	document.removeEventListener('visibilitychange', handleVisibilityChange)
 	if (Capacitor.getPlatform() === 'android') {
 		Admob.removeBanner()
 	}
 })
+
+function handleVisibilityChange() {
+	if (document.hidden) {
+		clearTimers()
+	} else {
+		setTimer()
+	}
+}
 
 function calculateRatio(width: number, height: number) {
 	if (!canvas.value) return 1
