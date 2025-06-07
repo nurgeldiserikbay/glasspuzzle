@@ -98,6 +98,7 @@ async function start() {
 			level: getLevel.value.id,
 			width: width,
 			height: height,
+			difficulty: gameStore.difficulty,
 		})
 
 		setTimer()

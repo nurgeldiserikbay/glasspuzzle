@@ -61,10 +61,8 @@ export function checkPoints(points1: IPoint, points2: IPoint) {
 
 export function checkEdges(edge1: [IPoint, IPoint], edge2: [IPoint, IPoint]) {
 	return (
-		(checkApproximatelyPoints(edge1[0], edge2[0], 0.1) &&
-			checkApproximatelyPoints(edge1[1], edge2[1], 0.1)) ||
-		(checkApproximatelyPoints(edge1[0], edge2[1], 0.1) &&
-			checkApproximatelyPoints(edge1[1], edge2[0], 0.1))
+		checkApproximatelyPoints(edge1[0], edge2[1], 0.1) &&
+		checkApproximatelyPoints(edge1[1], edge2[0], 0.1)
 	)
 }
 

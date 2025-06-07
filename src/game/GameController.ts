@@ -24,14 +24,16 @@ class GameController {
 		level,
 		width,
 		height,
+		difficulty,
 	}: {
 		img: string
 		level: number
 		width: number
 		height: number
+		difficulty: 'easy' | 'medium' | 'hard'
 	}) {
 		this._scene.start()
-		this._game.start({ img, level, width, height })
+		this._game.start({ img, level, width, height, difficulty })
 	}
 
 	restart({
@@ -39,13 +41,15 @@ class GameController {
 		level,
 		width,
 		height,
+		difficulty,
 	}: {
 		img: string
 		level: number
 		width: number
 		height: number
+		difficulty: 'easy' | 'medium' | 'hard'
 	}) {
-		this._game.start({ img, level, width, height })
+		this._game.start({ img, level, width, height, difficulty })
 	}
 }
 

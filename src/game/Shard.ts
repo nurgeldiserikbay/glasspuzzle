@@ -145,17 +145,30 @@ export class Shard {
 	}
 
 	placeRandomly() {
-		const padding = 50
-		const maxX =
-			this.game.gardenGrid.grid.width - this.sprite.width * this.scale - padding
-		const maxY =
-			this.game.gardenGrid.grid.height -
-			this.sprite.height * this.scale -
-			padding
-		this.curRotateStep = 2 || Math.floor(Math.random() * rotations.length)
+		// Use smaller padding to maximize usable space
+		const padding = 20
+		
+		// Calculate available space accounting for piece size
+		const maxX = this.game.gardenGrid.grid.width - this.sprite.width * this.scale - padding
+		const maxY = this.game.gardenGrid.grid.height - this.sprite.height * this.scale - padding
 
-		this.container.x = padding + Math.random() * maxX
-		this.container.y = padding + Math.random() * maxY
+		// Ensure pieces stay within visible bounds
+		const safeX = Math.min(maxX, this.game.gardenGrid.grid.width - padding)
+		const safeY = Math.min(maxY, this.game.gardenGrid.grid.height - padding)
+
+		// Randomly rotate piece
+		this.curRotateStep = Math.floor(Math.random() * rotations.length)
+
+		// Place piece in grid with some spacing between pieces
+		const gridSize = 100 // Size of grid cells for piece placement
+		const cols = Math.floor(safeX / gridSize)
+		const rows = Math.floor(safeY / gridSize)
+		
+		const col = Math.floor(Math.random() * cols)
+		const row = Math.floor(Math.random() * rows)
+
+		this.container.x = padding + col * gridSize + Math.random() * 20 // Add small random offset
+		this.container.y = padding + row * gridSize + Math.random() * 20
 
 		this.container.zIndex = 10
 		this.sprite.rotation = rotations[this.curRotateStep]

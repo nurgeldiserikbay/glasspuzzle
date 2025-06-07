@@ -14,6 +14,12 @@ import {
 import { Grid } from './Grid'
 import { rotations } from './helpers'
 
+const DIFFICULTY_AREA = {
+	easy: 80000,
+	medium: 40000,
+	hard: 20000,
+}
+
 class Game {
 	_scene: Scene
 	img?: string
@@ -23,7 +29,6 @@ class Game {
 	level: number
 	shards: Shard[]
 	maxDivisions: number
-	placedShards: number
 	option: IControlOpt
 	fullImg?: Sprite
 	backPlace?: Graphics
@@ -33,6 +38,7 @@ class Game {
 		top: number
 	}
 	viewBtn?: Sprite
+	difficulty: 'easy' | 'medium' | 'hard'
 
 	constructor({ scene, option }: IGameOpt) {
 		this._scene = scene
@@ -50,7 +56,7 @@ class Game {
 		this.level = 0
 		this.shards = []
 		this.maxDivisions = 3
-		this.placedShards = 0
+		this.difficulty = 'easy'
 	}
 
 	async init() {
@@ -63,17 +69,19 @@ class Game {
 		level,
 		width,
 		height,
+		difficulty,
 	}: {
 		img: string
 		level: number
 		width: number
 		height: number
+		difficulty: 'easy' | 'medium' | 'hard'
 	}) {
 		if (this.timerId) clearTimeout(this.timerId)
 		this.timerId = null
 		this.level = level
-		this.placedShards = 0
 		this.img = img
+		this.difficulty = difficulty
 
 		const assets = this.getLevelAssets(img)
 		this.loadedAssets = await this.preload(assets)
@@ -108,9 +116,8 @@ class Game {
 		}
 	}
 
-	calcPlacedShards() {
-		this.placedShards++
-		if (this.placedShards === this.shards.length) {
+	checkEndGame() {
+		if (this.shards.length === 1) {
 			setTimeout(() => {
 				this.option.endGame()
 				this.gardenGrid.onMouseUp()
@@ -178,7 +185,7 @@ class Game {
 		)
 	}
 
-	checkPlacement(shard: Shard) {
+	getNeighborsEdges(shard: Shard) {
 		const rotateStep = rotations[shard.curRotateStep]
 		const rotatedPoints = getTranslatedAndRotatedPoints(
 			shard.points,
@@ -187,7 +194,7 @@ class Game {
 			rotateStep
 		)
 
-		const neighbors = this.shards.filter((s) => {
+		return this.shards.filter((s) => {
 			if (s === shard || shard.curRotateStep !== s.curRotateStep) return false
 
 			const sRotatedPoints = getTranslatedAndRotatedPoints(
@@ -203,105 +210,119 @@ class Game {
 
 			return matchingPoints.length >= 2
 		})
+	}
 
-		if (neighbors.length > 0) {
-			const mergedPoints: IPoint[] = []
+	checkPlacement(shard: Shard) {
+		const neighbors = this.getNeighborsEdges(shard)
 
-			// Flatten edges array to work with individual edge arrays
-			const allEdgeArrays = [shard.edges, ...neighbors.map((n) => n.edges)]
+		if (neighbors.length === 0) return
 
-			while (allEdgeArrays.some((edgeArray) => edgeArray.length > 0)) {
-				let currentArrayIndex = 0
-				let currentEdgeIndex = 0
-				let foundMatch = false
+		const mergedPoints: IPoint[] = []
+		const stack: {
+			arrayIndex: number
+			edgeIndex: number
+		}[] = []
 
-				// Find first non-empty array
-				while (
-					currentArrayIndex < allEdgeArrays.length &&
-					allEdgeArrays[currentArrayIndex].length === 0
-				) {
-					currentArrayIndex++
-				}
+		// Flatten edges array to work with individual edge arrays
+		const allEdgeArrays = [shard.edges, ...neighbors.map((n) => n.edges)]
 
-				if (currentArrayIndex >= allEdgeArrays.length) {
-					break
-				}
+		let currentArrayIndex = 0
+		let currentEdgeIndex = 0
+		while (allEdgeArrays.some((edgeArray) => edgeArray.length > 0)) {
+			let foundMatch = false
 
-				const currentEdge =
-					allEdgeArrays[currentArrayIndex][
-						currentEdgeIndex % allEdgeArrays[currentArrayIndex].length
-					]
-
-				// Look for matching edge in other arrays
-				for (let i = 0; i < allEdgeArrays.length; i++) {
-					if (i === currentArrayIndex) continue
-
-					const matchingEdgeIndex = allEdgeArrays[i].findIndex((edge) =>
-						checkEdges(currentEdge, edge)
-					)
-
-					if (matchingEdgeIndex !== -1) {
-						// Remove both matching edges
-						allEdgeArrays[currentArrayIndex].splice(currentEdgeIndex, 1)
-						allEdgeArrays[i].splice(matchingEdgeIndex, 1)
-
-						// Continue from the array where we found the match
-						currentArrayIndex = i
-						currentEdgeIndex = matchingEdgeIndex
-						foundMatch = true
-						break
+			// Find first non-empty array
+			while (
+				currentArrayIndex < allEdgeArrays.length &&
+				allEdgeArrays[currentArrayIndex].length === 0
+			) {
+				if (stack.length) {
+					const { arrayIndex, edgeIndex } = stack.pop() || {
+						arrayIndex: 0,
+						edgeIndex: 0,
 					}
-				}
-
-				if (!foundMatch) {
-					// If no match found, add first point and remove edge
-					mergedPoints.push(currentEdge[0])
-					allEdgeArrays[currentArrayIndex].splice(currentEdgeIndex, 1)
+					currentArrayIndex = arrayIndex
+					currentEdgeIndex = edgeIndex
+				} else {
+					currentArrayIndex++
 				}
 			}
 
-			// shard.edges.forEach((edge) => {
-			// 	let matchingEdgeIndex = -1
-			// 	const matchingNeighbor = neighbors.find((n) => {
-			// 		matchingEdgeIndex = n.edges.findIndex((e2) => checkEdges(edge, e2))
-			// 		return matchingEdgeIndex !== -1
-			// 	})
+			if (currentArrayIndex >= allEdgeArrays.length) break
 
-			// 	if (matchingEdgeIndex !== -1 && matchingNeighbor) {
-			// 		let curIdx = matchingEdgeIndex
-			// 		do {
-			// 			curIdx = (curIdx + 1) % matchingNeighbor.edges.length
-			// 			if (!checkEdges(edge, matchingNeighbor.edges[curIdx])) {
-			// 				mergedPoints.push(matchingNeighbor.edges[curIdx][0])
-			// 			}
-			// 		} while (curIdx !== matchingEdgeIndex)
-			// 	} else {
-			// 		mergedPoints.push(edge[0])
-			// 	}
-			// })
+			const currentEdge = allEdgeArrays[currentArrayIndex][currentEdgeIndex]
 
-			const newShard = new Shard(mergedPoints, shard.sprite.texture, this)
-			const center = getCenterOfTriangle([
-				...neighbors.map((n) => n.container),
-				shard.container,
-			])
-			newShard.container.x = center.x
-			newShard.container.y = center.y
-			newShard.curRotateStep = shard.curRotateStep
-			newShard.sprite.rotation = shard.sprite.rotation
-			newShard.foreground.rotation = shard.foreground.rotation
+			// Look for matching edge in other arrays
+			for (let i = 0; i < allEdgeArrays.length; i++) {
+				if (i === currentArrayIndex || !allEdgeArrays[i].length) continue
 
-			shard.container.destroy()
-			neighbors.forEach((n) => n.container.destroy())
+				const matchingEdgeIndex = allEdgeArrays[i].findIndex((edge) =>
+					checkEdges(currentEdge, edge)
+				)
 
-			this.shards = this.shards.filter(
-				(s) => !neighbors.includes(s) && s !== shard
-			)
+				if (matchingEdgeIndex !== -1) {
+					// Remove both matching edges
+					allEdgeArrays[currentArrayIndex].splice(currentEdgeIndex, 1)
+					allEdgeArrays[i].splice(matchingEdgeIndex, 1)
 
-			this.shards.push(newShard)
+					if (allEdgeArrays[currentArrayIndex].length) {
+						stack.push({
+							arrayIndex: currentArrayIndex,
+							edgeIndex: allEdgeArrays[currentArrayIndex][currentEdgeIndex]
+								? currentEdgeIndex
+								: 0,
+						})
+					}
 
-			this.checkPlacement(newShard)
+					// Continue from the array where we found the match
+					currentArrayIndex = i
+					currentEdgeIndex = matchingEdgeIndex
+					if (
+						allEdgeArrays[currentArrayIndex].length &&
+						!allEdgeArrays[currentArrayIndex][currentEdgeIndex]
+					) {
+						currentEdgeIndex = 0
+					}
+					foundMatch = true
+					break
+				}
+			}
+
+			if (!foundMatch) {
+				// If no match found, add first point and remove edge
+				mergedPoints.push(currentEdge[0])
+				allEdgeArrays[currentArrayIndex].splice(currentEdgeIndex, 1)
+
+				if (
+					allEdgeArrays[currentArrayIndex].length &&
+					!allEdgeArrays[currentArrayIndex][currentEdgeIndex]
+				) {
+					currentEdgeIndex = 0
+				}
+			}
 		}
+
+		const newShard = new Shard(mergedPoints, shard.sprite.texture, this)
+		const center = getCenterOfTriangle([
+			...neighbors.map((n) => n.container),
+			shard.container,
+		])
+		newShard.container.x = center.x
+		newShard.container.y = center.y
+		newShard.container.zIndex = shard.container.zIndex
+		newShard.curRotateStep = shard.curRotateStep
+		newShard.sprite.rotation = shard.sprite.rotation
+		newShard.foreground.rotation = shard.foreground.rotation
+
+		shard.container.destroy()
+		neighbors.forEach((n) => n.container.destroy())
+
+		this.shards = this.shards.filter(
+			(s) => !neighbors.includes(s) && s !== shard
+		)
+
+		this.shards.push(newShard)
+		this.checkEndGame()
 	}
 
 	breakImage(
@@ -312,7 +333,7 @@ class Game {
 		const height = texture.height || this.fullImg?.height || 400
 
 		const area = width * height
-		const targetPieceArea = 20000
+		const targetPieceArea = DIFFICULTY_AREA[this.difficulty]
 		const totalPieces = Math.round(area / targetPieceArea)
 
 		const aspectRatio = width / height

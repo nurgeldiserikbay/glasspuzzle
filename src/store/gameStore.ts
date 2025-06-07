@@ -51,6 +51,11 @@ export const useGameStore = defineStore('GameStore', () => {
 		}
 	}
 
+	const difficulty = ref<'easy' | 'medium' | 'hard'>('easy')
+	function setDifficulty(difficultyValue: 'easy' | 'medium' | 'hard') {
+		difficulty.value = difficultyValue
+	}
+
 	return {
 		currentLevel,
 		setCurrentLevel,
@@ -58,5 +63,7 @@ export const useGameStore = defineStore('GameStore', () => {
 		lastSolved,
 		loadData,
 		updateGameStat,
+		difficulty,
+		setDifficulty,
 	}
 })

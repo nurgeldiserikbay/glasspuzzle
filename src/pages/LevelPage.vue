@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 
 import IconPadlock from '@/assets/img/padlock.svg'
 import IconApproved from '@/assets/img/approved.svg'
@@ -16,6 +16,7 @@ import { PAGES } from '@/utils/conts'
 const gameStore = useGameStore()
 const pageStore = usePageStore()
 
+const selectStrange = ref(false)
 const getStatus = computed(() => (id: number) => {
 	if (gameStore.isSolved(id)) return 'solved'
 	else if (gameStore.lastSolved === id) return 'active'
@@ -25,8 +26,14 @@ const getStatus = computed(() => (id: number) => {
 function selectLevel(id: number) {
 	if (getStatus.value(id)) {
 		gameStore.setCurrentLevel(id)
-		pageStore.routeTo(PAGES.PLAY)
+		selectStrange.value = true
 	}
+}
+
+function setDifficulty(difficulty: 'easy' | 'medium' | 'hard') {
+	gameStore.setDifficulty(difficulty)
+	selectStrange.value = false
+	pageStore.routeTo(PAGES.PLAY)
 }
 </script>
 
@@ -61,6 +68,19 @@ function selectLevel(id: number) {
 				</div>
 			</div>
 		</div>
+
+		<Teleport to="body">
+			<div v-if="selectStrange" class="modal">
+				<div class="modal__content">
+					<h2>Select Difficulty</h2>
+					<div class="modal__buttons">
+						<button @click="setDifficulty('easy')">Easy</button>
+						<button @click="setDifficulty('medium')">Medium</button>
+						<button @click="setDifficulty('hard')">Hard</button>
+					</div>
+				</div>
+			</div>
+		</Teleport>
 	</div>
 </template>
 
@@ -180,6 +200,64 @@ $rect: inset(0);
 			rgba(255, 255, 255, 0.5) 50%,
 			rgba(229, 172, 142, 0) 70%
 		);
+	}
+}
+
+.modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+
+	&__content {
+		background: rgba(255, 255, 255, 0.9);
+		padding: 2em;
+		border-radius: 1em;
+		box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+		text-align: center;
+		backdrop-filter: blur(10px);
+
+		h2 {
+			margin: 0 0 1em;
+			color: #333;
+			font-size: 1.5em;
+			letter-spacing: 0.05em;
+		}
+	}
+
+	&__buttons {
+		display: flex;
+		flex-direction: column;
+		gap: 1em;
+		justify-content: center;
+		letter-spacing: 0.05em;
+
+		button {
+			padding: 0.5em 1.5em;
+			border: none;
+			border-radius: 0.5em;
+			background: linear-gradient(135deg, #6e8efb, #a777e3);
+			color: white;
+			font-size: 1em;
+			cursor: pointer;
+			transition: transform 0.2s, box-shadow 0.2s;
+
+			&:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+			}
+
+			&:active {
+				transform: translateY(0);
+				box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+			}
+		}
 	}
 }
 </style>
