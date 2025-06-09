@@ -62,6 +62,11 @@ class Scene {
 	start() {
 		this.render()
 	}
+
+	destroy() {
+		this.app.destroy(true)
+		this.container.destroy({ children: true })
+	}
 }
 
 export default Scene

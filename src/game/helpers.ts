@@ -97,6 +97,22 @@ export function getRotatedPoints(
 	})
 }
 
+export function getRotatedPoint(
+	point: IPoint,
+	center: { x: number; y: number },
+	angle: number
+) {
+	const cos = Math.cos(angle)
+	const sin = Math.sin(angle)
+	const dx = point.x - center.x
+	const dy = point.y - center.y
+
+	return {
+		x: center.x + dx * cos - dy * sin,
+		y: center.y + dx * sin + dy * cos,
+	}
+}
+
 export function getTranslatedAndRotatedPoints(
 	points: IPoint[],
 	offset: { x: number; y: number },

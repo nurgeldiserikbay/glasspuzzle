@@ -50,7 +50,6 @@ export class Shard {
 		this.container.interactive = true
 		this.container.eventMode = 'static'
 		this.container.on('pointerdown', this.onMouseDown.bind(this))
-		// this.container.scale.set(this.scale)
 		this.sprite = new PIXI.Sprite(texture)
 		this.sprite.pivot.set(this.correctX, this.correctY)
 		this.sprite.x = this.correctX
@@ -70,6 +69,7 @@ export class Shard {
 		}
 		this.createMask(points)
 		this.game.gardenGrid.grid.addChild(this.container)
+		this.container.scale.set(this.scale)
 	}
 
 	setPoints(points: IPoint[], sort = false): [IPoint[], [IPoint, IPoint][]] {
@@ -145,34 +145,33 @@ export class Shard {
 	}
 
 	placeRandomly() {
-		// Use smaller padding to maximize usable space
 		const padding = 20
-		
-		// Calculate available space accounting for piece size
-		const maxX = this.game.gardenGrid.grid.width - this.sprite.width * this.scale - padding
-		const maxY = this.game.gardenGrid.grid.height - this.sprite.height * this.scale - padding
 
-		// Ensure pieces stay within visible bounds
+		const maxX =
+			this.game.gardenGrid.grid.width - this.sprite.width * this.scale - padding
+		const maxY =
+			this.game.gardenGrid.grid.height -
+			this.sprite.height * this.scale -
+			padding
+
 		const safeX = Math.min(maxX, this.game.gardenGrid.grid.width - padding)
 		const safeY = Math.min(maxY, this.game.gardenGrid.grid.height - padding)
 
-		// Randomly rotate piece
 		this.curRotateStep = Math.floor(Math.random() * rotations.length)
 
-		// Place piece in grid with some spacing between pieces
-		const gridSize = 100 // Size of grid cells for piece placement
+		const gridSize = 100
 		const cols = Math.floor(safeX / gridSize)
 		const rows = Math.floor(safeY / gridSize)
-		
+
 		const col = Math.floor(Math.random() * cols)
 		const row = Math.floor(Math.random() * rows)
-
-		this.container.x = padding + col * gridSize + Math.random() * 20 // Add small random offset
-		this.container.y = padding + row * gridSize + Math.random() * 20
 
 		this.container.zIndex = 10
 		this.sprite.rotation = rotations[this.curRotateStep]
 		this.foreground.rotation = rotations[this.curRotateStep]
+
+		this.container.x = padding + col * gridSize + Math.random() * 20
+		this.container.y = padding + row * gridSize + Math.random() * 20
 	}
 
 	onMouseDown(event: PIXI.FederatedPointerEvent) {
@@ -211,5 +210,11 @@ export class Shard {
 		const mousePos = event.global.clone()
 		this.container.x = mousePos.x - this.offset.x
 		this.container.y = mousePos.y - this.offset.y
+	}
+
+	destroy() {
+		this.container.destroy({ children: true })
+		this.sprite.destroy()
+		this.foreground.destroy()
 	}
 }

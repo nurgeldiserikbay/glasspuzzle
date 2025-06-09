@@ -10,8 +10,8 @@
     "build": "vite build --mode development",
     "build:prod": "vite build --mode production",
     "preview": "vite preview",
-    "build:android": "yarn build && npx capacitor-assets generate && npx cap sync && npx cap open android",
-    "build:android:prod": "yarn build:prod && npx capacitor-assets generate && npx cap sync && npx cap open android"
+    "build:android": "yarn build && npx cap sync && npx cap open android",
+    "build:android:prod": "yarn build:prod && npx cap sync && npx cap open android"
   },
   "dependencies": {
     "@boengli/capacitor-fullscreen": "^0.0.17",

@@ -67,4 +67,9 @@ export class Grid {
 	updateMousePos(event: FederatedPointerEvent) {
 		if (this.dragItem) this.dragItem.updateMousePos(event)
 	}
+
+	destroy() {
+		this.grid.destroy({ children: true })
+		this.graphics?.destroy()
+	}
 }

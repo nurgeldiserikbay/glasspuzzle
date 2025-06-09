@@ -51,6 +51,11 @@ class GameController {
 	}) {
 		this._game.start({ img, level, width, height, difficulty })
 	}
+
+	destroy() {
+		this._scene.destroy()
+		this._game.destroy()
+	}
 }
 
 export default GameController

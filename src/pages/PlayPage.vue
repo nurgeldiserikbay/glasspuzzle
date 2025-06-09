@@ -51,6 +51,7 @@ onBeforeUnmount(() => {
 	if (Capacitor.getPlatform() === 'android') {
 		Admob.removeBanner()
 	}
+	gameController.destroy()
 })
 
 function handleVisibilityChange() {
@@ -119,6 +120,7 @@ function startLevel() {
 		level: getLevel.value.id,
 		width: width,
 		height: height,
+		difficulty: gameStore.difficulty,
 	})
 	setTimer()
 }
