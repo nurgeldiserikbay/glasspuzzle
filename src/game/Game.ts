@@ -7,6 +7,7 @@ import { Shard } from './Shard'
 import {
 	checkApproximatelyPoints,
 	checkEdges,
+	getCenterOfTriangle,
 	getTranslatedAndRotatedPoints,
 	lerpPoint,
 } from './helpers'
@@ -38,7 +39,6 @@ class Game {
 	}
 	viewBtn?: Sprite
 	difficulty: 'easy' | 'medium' | 'hard'
-	breakTimerId?: ReturnType<typeof setTimeout> | null
 
 	constructor({ scene, option }: IGameOpt) {
 		this._scene = scene
@@ -90,9 +90,6 @@ class Game {
 	}
 
 	viewButton() {
-		if (this.viewBtn) {
-			this._scene.removeElem(this.viewBtn)
-		}
 		this.viewBtn = new Sprite(this.loadedAssets.show)
 		this.viewBtn.anchor.set(0.5)
 		this.viewBtn.width = this._scene.app.screen.width * 0.15
@@ -102,7 +99,7 @@ class Game {
 		this.viewBtn.on('pointerup', () => this.toggleImage(false))
 		this.viewBtn.on('pointerleave', () => this.toggleImage(false))
 		this.viewBtn.y = this._scene.app.screen.height * 0.85
-		this.viewBtn.x = this._scene.app.screen.width * 0.85
+		this.viewBtn.x = this._scene.app.screen.width * 0.82
 		this.viewBtn.zIndex = 50
 		this._scene.addElem(this.viewBtn)
 	}
@@ -123,6 +120,9 @@ class Game {
 			setTimeout(() => {
 				this.option.endGame()
 				this.gardenGrid.onMouseUp()
+				this._scene.removeElem(this.viewBtn)
+				this.viewBtn?.destroy()
+				this.viewBtn = undefined
 			}, 500)
 		}
 	}
@@ -157,7 +157,7 @@ class Game {
 			bottom: this.fullImg.height,
 		}
 
-		this.breakTimerId = setTimeout(() => {
+		setTimeout(() => {
 			if (this.fullImg) this.fullImg.alpha = 0
 			this.breakImage(image, coord)
 		}, 1000)
@@ -190,15 +190,12 @@ class Game {
 	getNeighborsEdges(shard: Shard) {
 		const rotateStep = rotations[shard.curRotateStep]
 		const rotatedPoints = getTranslatedAndRotatedPoints(
-			shard.points.map((p) => ({
-				x: p.x * shard.scale,
-				y: p.y * shard.scale,
-			})),
-			shard.container,
+			shard.points,
 			{
-				x: shard.correctX * shard.scale,
-				y: shard.correctY * shard.scale,
+				x: shard.container.x / shard.scale,
+				y: shard.container.y / shard.scale,
 			},
+			{ x: shard.correctX, y: shard.correctY },
 			rotateStep
 		)
 
@@ -206,20 +203,17 @@ class Game {
 			if (s === shard || shard.curRotateStep !== s.curRotateStep) return false
 
 			const sRotatedPoints = getTranslatedAndRotatedPoints(
-				s.points.map((p) => ({
-					x: p.x * s.scale,
-					y: p.y * s.scale,
-				})),
-				s.container,
+				s.points,
 				{
-					x: s.correctX * s.scale,
-					y: s.correctY * s.scale,
+					x: s.container.x / shard.scale,
+					y: s.container.y / shard.scale,
 				},
+				{ x: s.correctX, y: s.correctY },
 				rotateStep
 			)
 
 			const matchingPoints = sRotatedPoints.filter((p) =>
-				rotatedPoints.some((rp) => checkApproximatelyPoints(rp, p, 0.1))
+				rotatedPoints.some((rp) => checkApproximatelyPoints(rp, p, 10))
 			)
 
 			return matchingPoints.length >= 2
@@ -231,23 +225,40 @@ class Game {
 
 		if (neighbors.length === 0) return
 
-		const allShards = [shard, ...neighbors]
-
-		// Get all points from all shards
 		const mergedPoints: IPoint[] = []
-		const allEdgeArrays = allShards.map((s) => [...s.edges]) // Create copy of edges
+		const stack: {
+			arrayIndex: number
+			edgeIndex: number
+		}[] = []
 
-		// Process edges until no more matches can be found
-		while (allEdgeArrays.some((edges) => edges.length > 0)) {
+		// Flatten edges array to work with individual edge arrays
+		const allEdgeArrays = [shard.edges, ...neighbors.map((n) => n.edges)]
+
+		let currentArrayIndex = 0
+		let currentEdgeIndex = 0
+		while (allEdgeArrays.some((edgeArray) => edgeArray.length > 0)) {
 			let foundMatch = false
 
-			// Find first array with edges
-			const currentArrayIndex = allEdgeArrays.findIndex(
-				(edges) => edges.length > 0
-			)
-			if (currentArrayIndex === -1) break
+			// Find first non-empty array
+			while (
+				currentArrayIndex < allEdgeArrays.length &&
+				allEdgeArrays[currentArrayIndex].length === 0
+			) {
+				if (stack.length) {
+					const { arrayIndex, edgeIndex } = stack.pop() || {
+						arrayIndex: 0,
+						edgeIndex: 0,
+					}
+					currentArrayIndex = arrayIndex
+					currentEdgeIndex = edgeIndex
+				} else {
+					currentArrayIndex++
+				}
+			}
 
-			const currentEdge = allEdgeArrays[currentArrayIndex][0]
+			if (currentArrayIndex >= allEdgeArrays.length) break
+
+			const currentEdge = allEdgeArrays[currentArrayIndex][currentEdgeIndex]
 
 			// Look for matching edge in other arrays
 			for (let i = 0; i < allEdgeArrays.length; i++) {
@@ -259,43 +270,58 @@ class Game {
 
 				if (matchingEdgeIndex !== -1) {
 					// Remove both matching edges
-					allEdgeArrays[currentArrayIndex].splice(0, 1)
+					allEdgeArrays[currentArrayIndex].splice(currentEdgeIndex, 1)
 					allEdgeArrays[i].splice(matchingEdgeIndex, 1)
+
+					if (allEdgeArrays[currentArrayIndex].length) {
+						stack.push({
+							arrayIndex: currentArrayIndex,
+							edgeIndex: allEdgeArrays[currentArrayIndex][currentEdgeIndex]
+								? currentEdgeIndex
+								: 0,
+						})
+					}
+
+					// Continue from the array where we found the match
+					currentArrayIndex = i
+					currentEdgeIndex = matchingEdgeIndex
+					if (
+						allEdgeArrays[currentArrayIndex].length &&
+						!allEdgeArrays[currentArrayIndex][currentEdgeIndex]
+					) {
+						currentEdgeIndex = 0
+					}
 					foundMatch = true
 					break
 				}
 			}
 
 			if (!foundMatch) {
-				// If no match found, add point and remove edge
+				// If no match found, add first point and remove edge
 				mergedPoints.push(currentEdge[0])
-				allEdgeArrays[currentArrayIndex].splice(0, 1)
+				allEdgeArrays[currentArrayIndex].splice(currentEdgeIndex, 1)
+
+				if (
+					allEdgeArrays[currentArrayIndex].length &&
+					!allEdgeArrays[currentArrayIndex][currentEdgeIndex]
+				) {
+					currentEdgeIndex = 0
+				}
 			}
 		}
 
-		// Add any remaining points
-		allEdgeArrays.forEach((edges) => {
-			edges.forEach((edge) => {
-				mergedPoints.push(edge[0])
-			})
-		})
-
-		// Create new merged shard
-		const newShard = new Shard(
-			clockWithSort(mergedPoints), // Sort points clockwise
-			shard.sprite.texture,
-			this
-		)
-
-		// Copy properties from original shard
-		newShard.curRotateStep = shard.curRotateStep
-		newShard.container.x = shard.container.x
-		newShard.container.y = shard.container.y
+		const newShard = new Shard(mergedPoints, shard.sprite.texture, this)
+		const center = getCenterOfTriangle([
+			...neighbors.map((n) => n.container),
+			shard.container,
+		])
+		newShard.container.x = center.x
+		newShard.container.y = center.y
 		newShard.container.zIndex = shard.container.zIndex
+		newShard.curRotateStep = shard.curRotateStep
 		newShard.sprite.rotation = shard.sprite.rotation
 		newShard.foreground.rotation = shard.foreground.rotation
 
-		// Clean up old shards
 		shard.container.destroy()
 		neighbors.forEach((n) => n.container.destroy())
 
@@ -432,13 +458,17 @@ class Game {
 	}
 
 	destroy() {
-		if (this.viewBtn) this.viewBtn.destroy()
+		this._scene.removeUpdate('background')
 		this.gardenGrid.destroy()
 		this.shards.forEach((shard) => shard.destroy())
+		this.shards = []
 		this.fullImg?.destroy()
+		this.viewBtn?.destroy()
 		this.backPlace?.destroy()
-		this.timerId && clearTimeout(this.timerId)
-		this.breakTimerId && clearTimeout(this.breakTimerId)
+		this.loadedAssets = {}
+		this.img = undefined
+		this.level = 0
+		this.difficulty = 'easy'
 	}
 }
 

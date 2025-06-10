@@ -133,11 +133,12 @@ function nextLevel() {
 			isFirst: false,
 			onInterstitialAdClosed: () => {
 				adsStore.toggleLoading(false)
-
+				gameStore.currentLevel++
 				startLevel()
 			},
 		})
 	} else {
+		gameStore.currentLevel++
 		startLevel()
 	}
 }

@@ -66,6 +66,7 @@ class Scene {
 	destroy() {
 		this.app.destroy(true)
 		this.container.destroy({ children: true })
+		this._updates.clear()
 	}
 }
 
