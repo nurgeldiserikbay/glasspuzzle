@@ -11,13 +11,31 @@ import {
 	AdOptions,
 } from '@capacitor-community/admob'
 
+// TODO(owner): verify these are the correct PRODUCTION ad unit IDs for this app
+// in the AdMob console before release. Do not ship placeholder/test unit IDs.
+const BANNER_AD_ID = 'ca-app-pub-9702825788968948/6780330065'
+const INTERSTITIAL_AD_ID = 'ca-app-pub-9702825788968948/9958658177'
+
+// Frequency cap: show an interstitial once every N level transitions instead of
+// on every single level (was too aggressive and risked policy issues).
+const INTERSTITIAL_LEVEL_INTERVAL = 3
+
 const AdMobInitializationOptions = {
 	testingDevices: ['8a1b4b83d67add00', '1f6e845f97c74f32', 'e81b6ee74e7f26dc'],
-	initializeForTesting: true,
-	tagForChildDirectedTreatment: true,
+	// Only run AdMob in "testing" mode during local dev builds.
+	initializeForTesting: import.meta.env.DEV,
+	// COPPA child-directed treatment restricts ad demand and cuts revenue.
+	// Keep disabled unless the app is actually targeted at children.
+	tagForChildDirectedTreatment: false,
 }
 
 class Admob {
+	private bannerListenersReady = false
+	private interstitialListenersReady = false
+	private interstitialPrepared = false
+	private levelTransitions = 0
+	private pendingOnClosed: (() => void) | null = null
+
 	async initialize() {
 		await AdMob.initialize(AdMobInitializationOptions)
 
@@ -35,9 +53,17 @@ class Admob {
 		) {
 			await AdMob.showConsentForm()
 		}
+
+		// Warm up the first interstitial so it is ready when needed.
+		this.prepareInterstitial()
 	}
 
-	async showBanner() {
+	// Register banner listeners exactly once to avoid leaking a new listener on
+	// every showBanner() call.
+	private registerBannerListeners() {
+		if (this.bannerListenersReady) return
+		this.bannerListenersReady = true
+
 		AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
 			// Subscribe Banner Event Listener
 		})
@@ -49,9 +75,13 @@ class Admob {
 				// Subscribe Change Banner Size
 			}
 		)
+	}
+
+	async showBanner() {
+		this.registerBannerListeners()
 
 		const options: BannerAdOptions = {
-			adId: 'ca-app-pub-9702825788968948/6780330065',
+			adId: BANNER_AD_ID,
 			adSize: BannerAdSize.BANNER,
 			position: BannerAdPosition.BOTTOM_CENTER,
 			margin: 0,
@@ -74,43 +104,87 @@ class Admob {
 		await AdMob.removeBanner()
 	}
 
-	async interstitial({
-		isFirst,
-		onInterstitialAdClosed,
-	}: {
-		isFirst: boolean
-		onInterstitialAdClosed: () => void
-	}) {
-		let isClosed = false
-		function closeAds() {
-			onInterstitialAdClosed()
-			isClosed = true
-		}
+	// Register interstitial listeners exactly once to avoid leaking a new set of
+	// listeners (and therefore multiple onInterstitialAdClosed callbacks) on
+	// every interstitial() call.
+	private registerInterstitialListeners() {
+		if (this.interstitialListenersReady) return
+		this.interstitialListenersReady = true
 
 		AdMob.addListener(InterstitialAdPluginEvents.Loaded, (info: AdLoadInfo) => {
 			console.log(info)
 		})
 		AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => {
 			console.log('Dismissed')
-			if (!isClosed) closeAds()
+			this.interstitialPrepared = false
+			this.resolvePending()
+			// Preload the next interstitial for a later transition.
+			this.prepareInterstitial()
 		})
 		AdMob.addListener(InterstitialAdPluginEvents.FailedToLoad, () => {
 			console.log('FailedToLoad')
-			if (!isClosed) closeAds()
+			this.interstitialPrepared = false
+			this.resolvePending()
 		})
 		AdMob.addListener(InterstitialAdPluginEvents.FailedToShow, () => {
 			console.log('FailedToShow')
-			if (!isClosed) closeAds()
+			this.interstitialPrepared = false
+			this.resolvePending()
 		})
+	}
+
+	private resolvePending() {
+		const cb = this.pendingOnClosed
+		this.pendingOnClosed = null
+		if (cb) cb()
+	}
+
+	// Preload an interstitial ahead of time so it is ready to show instantly.
+	async prepareInterstitial() {
+		this.registerInterstitialListeners()
+		if (this.interstitialPrepared) return
 
 		const options: AdOptions = {
-			adId: 'ca-app-pub-9702825788968948/9958658177',
+			adId: INTERSTITIAL_AD_ID,
 			isTesting: import.meta.env.VITE_APP_MODE === 'TEST',
 			// npa: true
 		}
 
-		await AdMob.prepareInterstitial(options)
-		if (!isFirst) await AdMob.showInterstitial()
+		try {
+			await AdMob.prepareInterstitial(options)
+			this.interstitialPrepared = true
+		} catch (error) {
+			this.interstitialPrepared = false
+		}
+	}
+
+	async interstitial({
+		onInterstitialAdClosed,
+	}: {
+		onInterstitialAdClosed: () => void
+	}) {
+		this.registerInterstitialListeners()
+		this.levelTransitions++
+
+		const shouldShow =
+			this.levelTransitions % INTERSTITIAL_LEVEL_INTERVAL === 0
+
+		// Not this transition's turn, or the ad simply isn't ready yet: don't block
+		// gameplay — advance immediately and make sure one is preloaded for later.
+		if (!shouldShow || !this.interstitialPrepared) {
+			onInterstitialAdClosed()
+			this.prepareInterstitial()
+			return
+		}
+
+		this.pendingOnClosed = onInterstitialAdClosed
+		try {
+			await AdMob.showInterstitial()
+		} catch (error) {
+			this.interstitialPrepared = false
+			this.resolvePending()
+			this.prepareInterstitial()
+		}
 	}
 }
 

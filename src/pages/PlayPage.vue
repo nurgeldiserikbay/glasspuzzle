@@ -130,7 +130,6 @@ function nextLevel() {
 		if (adsStore.loading) return
 		adsStore.toggleLoading(true)
 		Admob.interstitial({
-			isFirst: false,
 			onInterstitialAdClosed: () => {
 				adsStore.toggleLoading(false)
 				gameStore.currentLevel++
