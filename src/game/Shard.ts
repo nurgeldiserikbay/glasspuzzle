@@ -79,35 +79,6 @@ export class Shard {
 		return [sortedPoints, edges]
 	}
 
-	// cornerPoints(points: IPoint[]) {
-	// 	let allPoints: IPoint[] = points
-	// 	const center = {
-	// 		x: allPoints.reduce((sum, p) => sum + p.x, 0) / allPoints.length,
-	// 		y: allPoints.reduce((sum, p) => sum + p.y, 0) / allPoints.length,
-	// 	}
-	// 	allPoints.sort((a, b) => {
-	// 		const angleA = Math.atan2(a.y - center.y, a.x - center.x)
-	// 		const angleB = Math.atan2(b.y - center.y, b.x - center.x)
-	// 		return angleB - angleA
-	// 	})
-	// 	const hull: IPoint[] = []
-	// 	for (let i = 0; i < allPoints.length; i++) {
-	// 		const p1 = allPoints[i]
-	// 		const p2 = allPoints[(i + 1) % allPoints.length]
-	// 		const p3 = allPoints[(i + 2) % allPoints.length]
-
-	// 		const crossProduct =
-	// 			(p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x)
-
-	// 		if (crossProduct >= 0) {
-	// 			hull.push(p1)
-	// 		}
-	// 	}
-	// 	allPoints = hull
-	// 	console.log('allPoints', allPoints)
-	// 	return allPoints
-	// }
-
 	createMask(points: IPoint[]) {
 		const mask = new PIXI.Graphics()
 		mask.moveTo(points[0].x, points[0].y)

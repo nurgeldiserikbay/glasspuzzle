@@ -144,13 +144,15 @@ function nextLevel() {
 }
 
 function setTimer() {
+	// Guard against stacking multiple intervals (e.g. rapid visibility toggles)
+	clearTimers()
 	timers['timer'] = setInterval(() => {
 		time.value += 1
 	}, 100)
 }
 
 function clearTimers() {
-	Object.values(timers).forEach((id) => clearTimeout(id))
+	Object.values(timers).forEach((id) => clearInterval(id))
 }
 </script>
 

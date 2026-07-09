@@ -9,7 +9,6 @@ import {
 	checkEdges,
 	getCenterOfTriangle,
 	getTranslatedAndRotatedPoints,
-	lerpPoint,
 } from './helpers'
 import { Grid } from './Grid'
 import { rotations } from './helpers'
@@ -20,6 +19,12 @@ const DIFFICULTY_AREA = {
 	hard: 20000,
 }
 
+// Capture radius (in image-space units) for snapping two shards together.
+// Rotation is already quantized to 4 steps, so only position needs a tolerance.
+// A wider radius makes gluing reliable with a finger on mobile without merging
+// unrelated pieces (the shared-edge check in checkPlacement still gates merges).
+const SNAP_TOLERANCE = 20
+
 class Game {
 	_scene: Scene
 	img?: string
@@ -28,7 +33,6 @@ class Game {
 	gardenGrid: Grid
 	level: number
 	shards: Shard[]
-	maxDivisions: number
 	option: IControlOpt
 	fullImg?: Sprite
 	backPlace?: Graphics
@@ -55,7 +59,6 @@ class Game {
 		this.gardenGrid = new Grid(this._scene, this)
 		this.level = 0
 		this.shards = []
-		this.maxDivisions = 3
 		this.difficulty = 'easy'
 	}
 
@@ -213,7 +216,9 @@ class Game {
 			)
 
 			const matchingPoints = sRotatedPoints.filter((p) =>
-				rotatedPoints.some((rp) => checkApproximatelyPoints(rp, p, 10))
+				rotatedPoints.some((rp) =>
+					checkApproximatelyPoints(rp, p, SNAP_TOLERANCE)
+				)
 			)
 
 			return matchingPoints.length >= 2
@@ -401,33 +406,6 @@ class Game {
 		this.shards.forEach((shard) => {
 			shard.placeRandomly()
 		})
-	}
-
-	divide(
-		a: IPoint,
-		b: IPoint,
-		c: IPoint,
-		d: IPoint,
-		i: number = 0,
-		texture: Texture
-	) {
-		if (i < this.maxDivisions) {
-			const range = 0.35 + Math.random() * 0.3
-			let p0 = lerpPoint(a, b, range)
-			let p1 = lerpPoint(c, d, range)
-			let p2 = lerpPoint(a, d, range)
-			let p3 = lerpPoint(b, c, range)
-
-			if (i < 2) {
-				this.divide(p0, p1, p3, p2, i + 1, texture)
-			} else {
-				this.shards.push(new Shard([a, p0, p2, d], texture, this))
-				this.shards.push(new Shard([p0, b, c, p3], texture, this))
-				this.shards.push(new Shard([p2, p3, c, d], texture, this))
-			}
-		} else {
-			this.shards.push(new Shard([a, b, c, d], texture, this))
-		}
 	}
 
 	getLevelAssets(img: string) {

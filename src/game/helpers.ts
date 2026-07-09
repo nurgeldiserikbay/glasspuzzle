@@ -25,11 +25,6 @@ export function addZero(num: number) {
 	else return num
 }
 
-export function lerpPoint(a: IPoint, b: IPoint, range: number) {
-	let t = Math.random() * (0.5 + range - (0.5 - range)) + (0.5 - range)
-	return { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) }
-}
-
 export function clockWithSort(points: IPoint[]) {
 	const center = {
 		x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
@@ -53,10 +48,6 @@ export function getEdges(points: IPoint[]) {
 		}
 	}
 	return edges
-}
-
-export function checkPoints(points1: IPoint, points2: IPoint) {
-	return points1.x === points2.x && points1.y === points2.y
 }
 
 export function checkEdges(edge1: [IPoint, IPoint], edge2: [IPoint, IPoint]) {

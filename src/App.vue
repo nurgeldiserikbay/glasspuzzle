@@ -15,12 +15,11 @@ const pageStore = usePageStore()
 const gameStore = useGameStore()
 
 onMounted(async () => {
-	if (Capacitor.getPlatform() === 'android') {
-		Admob.initialize()
-	}
+	// Load saved progress on every platform (web included), not just Android
+	gameStore.loadData()
 
 	if (Capacitor.getPlatform() === 'android') {
-		gameStore.loadData()
+		Admob.initialize()
 		await Fullscreen.activateImmersiveMode()
 		await StatusBar.hide()
 		await StatusBar.setOverlaysWebView({ overlay: true })
