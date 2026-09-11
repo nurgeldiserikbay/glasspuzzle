@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 
 import OtherGames from '@/components/OtherGames.vue'
+import OtherGamesIcon from '@/components/OtherGamesIcon.vue'
 
 import { usePageStore } from '@/store/pageStore'
 
@@ -16,6 +17,16 @@ const isOtherGames = ref(false)
 
 <template>
 	<div class="page start-page">
+		<!-- Вход в «Другие игры»: небольшой значок в углу. Приглушён намеренно —
+		     раздел не должен спорить за внимание с кнопкой Play. -->
+		<button
+			class="promo-games"
+			aria-label="Other games"
+			@click="isOtherGames = true"
+		>
+			<OtherGamesIcon />
+		</button>
+
 		<div class="start-page__body">
 			<div class="start-page__logo">
 				<img src="@/assets/img/logotype.png" alt="" />
@@ -23,10 +34,6 @@ const isOtherGames = ref(false)
 
 			<div class="start-page__btns">
 				<UiButton @click="pageStore.routeTo(PAGES.LEVEL)"></UiButton>
-				<button class="promo-more" @click="isOtherGames = true">
-					Other games
-				</button>
-
 				<a
 					href="https://docs.google.com/document/d/1XWkr7Mxj0en79WtJNmbAkaQXNh6s6HMP8xc93GZc3_8/edit?usp=sharing"
 					target="_blank"
@@ -105,29 +112,36 @@ const isOtherGames = ref(false)
 }
 
 /*
-   Кнопка в раздел «Другие игры».
+   Вход в «Другие игры».
 
-   Не в scoped-блоке страницы, а отдельным правилом с собственным именем: класс
-   один и тот же во всех играх, и подгонять его под именование каждой страницы
-   незачем.
+   position: fixed, а не absolute: экран одностраничный и на весь вьюпорт, и так
+   значок не зависит от того, позиционирован ли предок.
 */
-.promo-more {
-	padding: 10px 20px;
+.promo-games {
+	position: fixed;
+	top: 12px;
+	right: 12px;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
 	border: none;
-	border-radius: 13px;
-	background: linear-gradient(180deg, #9280f7, #6246d6);
-	box-shadow: 0 3px 0 #3f2ba0;
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.28);
+	opacity: 0.55;
 	cursor: pointer;
-	font-family: inherit;
-	font-size: 13px;
-	font-weight: 900;
-	letter-spacing: 0.8px;
-	text-transform: uppercase;
 	color: #fff;
 }
 
-.promo-more:active {
-	transform: translateY(2px);
-	box-shadow: 0 1px 0 #3f2ba0;
+.promo-games svg {
+	width: 20px;
+	height: 20px;
+}
+
+.promo-games:active {
+	opacity: 0.85;
 }
 </style>
