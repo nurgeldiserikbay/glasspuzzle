@@ -4,13 +4,14 @@ import { Capacitor } from '@capacitor/core'
 
 import BackLink from '@/components/BackLink.vue'
 import ResultTable from '@/components/ResultTable.vue'
+import AdSlot from '@/components/AdSlot.vue'
+import OtherGames from '@/components/OtherGames.vue'
 
 import LEVELS from '@/game/levels'
 
 import { PAGES } from '@/utils/conts'
 
 import { usePageStore } from '@/store/pageStore'
-import { useAdsStore } from '@/store/adsStore'
 import { useGameStore } from '@/store/gameStore'
 
 import Admob from '@/utils/admob'
@@ -18,11 +19,11 @@ import { GameController } from '@/game/index'
 import { setTimerValue } from '@/game/helpers'
 
 const pageStore = usePageStore()
-const adsStore = useAdsStore()
 const gameStore = useGameStore()
 
 let timers: { [key: string]: ReturnType<typeof setTimeout> } = {}
 const isWin = ref<boolean>(false)
+const isOtherGames = ref(false)
 
 let gameController: GameController
 const canvas = ref<HTMLCanvasElement>()
@@ -84,6 +85,14 @@ async function start() {
 						new Date().toString(),
 						getTime.value
 					)
+
+					// Уровень пройден, экран итога уже показан — естественная пауза.
+					// Раньше показ висел на кнопке перехода: объявление выходило в момент
+					// начала следующего уровня, и сам уровень ждал его закрытия. Частоту
+					// (каждый 3-й переход) по-прежнему считает рекламный модуль.
+					if (Capacitor.getPlatform() === 'android') {
+						void Admob.interstitial()
+					}
 				},
 			},
 		})
@@ -126,20 +135,10 @@ function startLevel() {
 }
 
 function nextLevel() {
-	if (Capacitor.getPlatform() === 'android') {
-		if (adsStore.loading) return
-		adsStore.toggleLoading(true)
-		Admob.interstitial({
-			onInterstitialAdClosed: () => {
-				adsStore.toggleLoading(false)
-				gameStore.currentLevel++
-				startLevel()
-			},
-		})
-	} else {
-		gameStore.currentLevel++
-		startLevel()
-	}
+	// Никакой рекламы на этом пути: переход на следующий уровень запускает игрок.
+	// Показ перенесён на завершение уровня (см. option.endGame).
+	gameStore.currentLevel++
+	startLevel()
 }
 
 function setTimer() {
@@ -173,6 +172,10 @@ function clearTimers() {
 			@next="nextLevel"
 			@close="pageStore.toBackLink(PAGES.START)"
 		/>
+
+		<AdSlot :interactive="isWin" @open="isOtherGames = true" />
+
+		<OtherGames v-if="isOtherGames" @close="isOtherGames = false" />
 	</div>
 </template>
 
@@ -182,7 +185,16 @@ function clearTimers() {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-	padding: 15px 15px 95px;
+	/*
+	   Низ отдан рекламной зоне: в ней либо баннер, либо кросс-промо, но пустой
+	   она не бывает.
+
+	   Раньше здесь стояли фиксированные 95px «на баннер». Adaptive-баннер такой
+	   высоты не имеет: на телефоне он ниже, на планшете выше — то есть отступ
+	   промахивался в обе стороны. Теперь высоту диктует само объявление
+	   (--ad-band), а 15px — обычный зазор, такой же как по бокам.
+	*/
+	padding: 15px 15px calc(var(--ad-band) + 15px);
 
 	&__head {
 		position: relative;

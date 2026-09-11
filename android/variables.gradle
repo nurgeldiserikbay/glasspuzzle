@@ -1,7 +1,7 @@
 ext {
-    minSdkVersion = 22
-    compileSdkVersion = 35
-    targetSdkVersion = 35
+    minSdkVersion = 24
+    compileSdkVersion = 36
+    targetSdkVersion = 36
     androidxActivityVersion = '1.8.0'
     androidxAppCompatVersion = '1.6.1'
     androidxCoordinatorLayoutVersion = '1.2.0'
@@ -13,4 +13,10 @@ ext {
     androidxJunitVersion = '1.1.5'
     androidxEspressoCoreVersion = '3.5.1'
     cordovaAndroidVersion = '10.1.1'
+
+    // Закреплено намеренно. Плагин admob по умолчанию берёт '24.9.+', а плавающая
+    // версия может разрешиться в сборку вне списка Families Self-Certified Ads SDK,
+    // что само по себе нарушает политику. Повышать только до версии,
+    // подтверждённой в этом списке.
+    playServicesAdsVersion = '24.9.0'
 }

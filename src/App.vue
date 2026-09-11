@@ -8,9 +8,12 @@ import { Fullscreen } from '@boengli/capacitor-fullscreen'
 
 import Admob from '@/utils/admob'
 
+import { useAdsStore } from '@/store/adsStore'
+
 import { usePageStore } from '@/store/pageStore'
 import { useGameStore } from '@/store/gameStore'
 
+const adsStore = useAdsStore()
 const pageStore = usePageStore()
 const gameStore = useGameStore()
 
@@ -19,7 +22,11 @@ onMounted(async () => {
 	gameStore.loadData()
 
 	if (Capacitor.getPlatform() === 'android') {
-		Admob.initialize()
+		// Подписку ставим до initialize(): первое событие баннера может прийти
+		// раньше, чем страница успеет смонтироваться, и потеряться.
+		Admob.onBannerChange((live, height) => adsStore.setBanner(live, height))
+
+		void Admob.initialize().catch(() => {})
 		await Fullscreen.activateImmersiveMode()
 		await StatusBar.hide()
 		await StatusBar.setOverlaysWebView({ overlay: true })

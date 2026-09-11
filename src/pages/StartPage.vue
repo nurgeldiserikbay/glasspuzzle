@@ -1,4 +1,8 @@
 <script lang="ts" setup>
+import { ref } from 'vue'
+
+import OtherGames from '@/components/OtherGames.vue'
+
 import { usePageStore } from '@/store/pageStore'
 
 import UiButton from '@/components/UiButton.vue'
@@ -6,6 +10,8 @@ import UiButton from '@/components/UiButton.vue'
 import { PAGES } from '@/utils/conts'
 
 const pageStore = usePageStore()
+
+const isOtherGames = ref(false)
 </script>
 
 <template>
@@ -17,6 +23,10 @@ const pageStore = usePageStore()
 
 			<div class="start-page__btns">
 				<UiButton @click="pageStore.routeTo(PAGES.LEVEL)"></UiButton>
+				<button class="promo-more" @click="isOtherGames = true">
+					Other games
+				</button>
+
 				<a
 					href="https://docs.google.com/document/d/1XWkr7Mxj0en79WtJNmbAkaQXNh6s6HMP8xc93GZc3_8/edit?usp=sharing"
 					target="_blank"
@@ -25,6 +35,8 @@ const pageStore = usePageStore()
 				>
 			</div>
 		</div>
+
+		<OtherGames v-if="isOtherGames" @close="isOtherGames = false" />
 	</div>
 </template>
 
@@ -90,5 +102,32 @@ const pageStore = usePageStore()
 	text-align: center;
 	padding: 2px 15px;
 	margin-bottom: 35px;
+}
+
+/*
+   Кнопка в раздел «Другие игры».
+
+   Не в scoped-блоке страницы, а отдельным правилом с собственным именем: класс
+   один и тот же во всех играх, и подгонять его под именование каждой страницы
+   незачем.
+*/
+.promo-more {
+	padding: 10px 20px;
+	border: none;
+	border-radius: 13px;
+	background: linear-gradient(180deg, #9280f7, #6246d6);
+	box-shadow: 0 3px 0 #3f2ba0;
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 900;
+	letter-spacing: 0.8px;
+	text-transform: uppercase;
+	color: #fff;
+}
+
+.promo-more:active {
+	transform: translateY(2px);
+	box-shadow: 0 1px 0 #3f2ba0;
 }
 </style>
