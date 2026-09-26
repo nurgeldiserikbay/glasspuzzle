@@ -33,7 +33,7 @@ const isOtherGames = ref(false)
 			</div>
 
 			<div class="start-page__btns">
-				<UiButton @click="pageStore.routeTo(PAGES.LEVEL)"></UiButton>
+				<UiButton @click="pageStore.routeTo(PAGES.LEVEL)">Play</UiButton>
 				<a
 					href="https://docs.google.com/document/d/1XWkr7Mxj0en79WtJNmbAkaQXNh6s6HMP8xc93GZc3_8/edit?usp=sharing"
 					target="_blank"
@@ -65,11 +65,8 @@ const isOtherGames = ref(false)
 	&__logo {
 		max-width: 280px;
 		position: relative;
-		color: rgb(254, 206, 13);
-		text-align: center;
-		letter-spacing: 3px;
-		-webkit-text-stroke: 2px rgb(45, 128, 0);
-		overflow: hidden;
+		/* Логотип нарисован под тёмный фон; на небе ему нужна своя опора. */
+		filter: drop-shadow(0 6px 0 rgba(58, 156, 204, 0.35));
 		margin-bottom: 35px;
 
 		img {
@@ -77,11 +74,6 @@ const isOtherGames = ref(false)
 			width: 100%;
 		}
 
-		span {
-			span {
-				font-size: 32px;
-			}
-		}
 	}
 
 	&__btns {
@@ -92,9 +84,6 @@ const isOtherGames = ref(false)
 		gap: 18px;
 		margin-bottom: 85px;
 
-		.ui-button {
-			margin-bottom: 45px;
-		}
 	}
 }
 
@@ -103,9 +92,9 @@ const isOtherGames = ref(false)
 	display: inline-block;
 	margin: 0 auto;
 	font-size: 16px;
-	color: #ffffff;
+	color: var(--ink-soft);
 	text-decoration: none;
-	letter-spacing: 6px;
+	letter-spacing: 3px;
 	text-align: center;
 	padding: 2px 15px;
 	margin-bottom: 35px;
@@ -130,10 +119,10 @@ const isOtherGames = ref(false)
 	padding: 0;
 	border: none;
 	border-radius: 50%;
-	background: rgba(0, 0, 0, 0.28);
-	opacity: 0.55;
+	background: rgba(59, 61, 107, 0.12);
+	opacity: 0.7;
 	cursor: pointer;
-	color: #fff;
+	color: var(--ink);
 }
 
 .promo-games svg {

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import UiIcon from '@/components/UiIcon.vue'
 import { usePageStore } from '@/store/pageStore'
 
 const pageStore = usePageStore()
@@ -9,21 +10,26 @@ function back() {
 </script>
 
 <template>
-	<button class="back-link" @click="back">
-		<img src="@/assets/img/back.png" alt="exit" />
+	<button class="back-link" aria-label="Back" @click="back">
+		<UiIcon name="back" />
 	</button>
 </template>
 
 <style lang="scss" scoped>
-.back-link {
-	background: transparent;
-	padding: 0;
-	border: none;
-	outline: none;
-	cursor: pointer;
+@use '@/assets/common' as *;
 
-	img {
-		height: 40px;
-	}
+.back-link {
+	@include chunky(var(--card), var(--card-edge), 4px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border-radius: 14px;
+	color: var(--ink);
+	font-size: 26px;
+	cursor: pointer;
+	flex-shrink: 0;
 }
 </style>

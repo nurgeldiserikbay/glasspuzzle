@@ -1,15 +1,28 @@
-import { Container } from 'pixi.js'
-
 import Scene from './Scene'
 
-export interface IPixiContainer extends Container {
-	anchor: {
-		set: (x: number, y: number) => void
-	}
+export type Difficulty = 'easy' | 'medium' | 'hard'
+
+/** intro — картинка целая и разбивается; play — можно собирать; done — собрано. */
+export type GamePhase = 'idle' | 'intro' | 'play' | 'done'
+
+export interface IGameState {
+	total: number
+	placed: number
+	/** Сколько кусков отложено на поле не на своих местах. */
+	bench: number
+	benchLimit: number
+	/** Вращаются ли куски на этой сложности — от этого зависит подсказка. */
+	rotate: boolean
+	/** Верх лотка в пикселях холста — над ним страница ставит плашку «стол». */
+	trayTop: number
 }
 
 export interface IControlOpt {
 	endGame: () => void
+	onState?: (state: IGameState) => void
+	onPhase?: (phase: GamePhase) => void
+	/** Попытка отложить четвёртый кусок: он вернулся в лоток. */
+	onBenchFull?: () => void
 }
 
 export interface IGameOpt {
@@ -29,12 +42,6 @@ export interface ISceneOpt {
 export interface ITicker {
 	deltaMS: number
 	lastTime: number
-}
-
-export interface IAssetsSrc {
-	alias: string
-	loader: string
-	src: string
 }
 
 export interface IPoint {

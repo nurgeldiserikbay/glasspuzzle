@@ -1,0 +1,28 @@
+// Общие приёмы оформления. Подключается в компонентах через
+// @use '@/assets/common' as *.
+
+/*
+   «Плиточная» кнопка: сплошная кромка и плотная тень того же тона снизу,
+   на которую кнопка садится при нажатии. Так сделаны кнопки в Tile Club —
+   предмет, а не надпись.
+*/
+@mixin chunky($face, $edge, $depth: 5px) {
+	background: $face;
+	border: 2px solid $edge;
+	box-shadow: 0 $depth 0 $edge;
+	transition:
+		transform 0.08s,
+		box-shadow 0.08s;
+
+	&:active {
+		transform: translateY($depth - 1px);
+		box-shadow: 0 1px 0 $edge;
+	}
+}
+
+@mixin card {
+	background: var(--card);
+	border: 2px solid var(--card-edge);
+	box-shadow: 0 5px 0 var(--card-depth);
+	border-radius: 18px;
+}

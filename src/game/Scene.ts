@@ -7,37 +7,60 @@ class Scene {
 	app: PIXI.Application
 	container: PIXI.Container
 	private _updates: Map<string, (ticker: ITicker) => void>
+	private _resize: (() => void)[]
+	private _observer?: ResizeObserver
 
 	constructor({ canvas }: ISceneOpt) {
 		this.canvas = canvas
 		this.app = new PIXI.Application()
 		this.container = new PIXI.Container()
 		this._updates = new Map()
+		this._resize = []
 
 		this.app.stage.addChild(this.container)
 	}
 
-	async init() {
-		this.canvas.width = this.canvas.clientWidth
-		this.canvas.height = this.canvas.clientHeight
+	/** Холст занимает место своего родителя — размер берём оттуда. */
+	private get host() {
+		return this.canvas.parentElement || this.canvas
+	}
 
+	async init() {
 		await this.app.init({
 			resolution: window.devicePixelRatio || 1,
 			backgroundAlpha: 0,
 			canvas: this.canvas,
-			width: this.canvas.width,
-			height: this.canvas.height,
+			width: this.host.clientWidth,
+			height: this.host.clientHeight,
 			autoDensity: true,
 			antialias: true,
 		})
+		this.fitCss()
+
+		// Высота поля меняется после старта: рекламная полоса узнаёт настоящую
+		// высоту баннера позже, чем монтируется страница. Окно при этом не
+		// ресайзится, поэтому следим за самим контейнером.
+		let last = `${this.host.clientWidth}x${this.host.clientHeight}`
+		this._observer = new ResizeObserver(() => {
+			const w = this.host.clientWidth
+			const h = this.host.clientHeight
+			if (!w || !h || `${w}x${h}` === last) return
+			last = `${w}x${h}`
+			this.app.renderer.resize(w, h)
+			this.fitCss()
+			this._resize.forEach((fn) => fn())
+		})
+		this._observer.observe(this.host)
 	}
 
-	addElem(graphics: any) {
-		if (graphics) this.container.addChild(graphics)
+	/** autoDensity прибивает размер холста в пикселях — возвращаем его родителю. */
+	private fitCss() {
+		this.canvas.style.width = '100%'
+		this.canvas.style.height = '100%'
 	}
 
-	removeElem(graphics: any) {
-		if (graphics) this.container.removeChild(graphics)
+	onResize(fn: () => void) {
+		this._resize.push(fn)
 	}
 
 	addUpdate(name: string, func: (ticker: ITicker) => void) {
@@ -48,9 +71,9 @@ class Scene {
 		this._updates.delete(name)
 	}
 
-	render() {
-		this.app.ticker.add((ticker: ITicker) => {
-			for (let update of this._updates.values()) {
+	start() {
+		this.app.ticker.add((ticker: PIXI.Ticker) => {
+			for (const update of this._updates.values()) {
 				update({
 					deltaMS: ticker.deltaMS,
 					lastTime: ticker.lastTime,
@@ -59,14 +82,11 @@ class Scene {
 		})
 	}
 
-	start() {
-		this.render()
-	}
-
 	destroy() {
-		this.app.destroy(true)
-		this.container.destroy({ children: true })
+		this._observer?.disconnect()
+		this._resize = []
 		this._updates.clear()
+		this.app.destroy(false, { children: true })
 	}
 }
 

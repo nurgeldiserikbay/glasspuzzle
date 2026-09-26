@@ -1,4 +1,4 @@
-import { IGameControllerOpt } from './interfaces'
+import { IGameControllerOpt, Difficulty } from './interfaces'
 import Scene from './Scene'
 import Game from './Game'
 
@@ -16,45 +16,25 @@ class GameController {
 
 	async init() {
 		await this._scene.init()
-		await this._game.init()
-	}
-
-	async start({
-		img,
-		level,
-		width,
-		height,
-		difficulty,
-	}: {
-		img: string
-		level: number
-		width: number
-		height: number
-		difficulty: 'easy' | 'medium' | 'hard'
-	}) {
+		this._game.init()
 		this._scene.start()
-		this._game.start({ img, level, width, height, difficulty })
 	}
 
-	restart({
-		img,
-		level,
-		width,
-		height,
-		difficulty,
-	}: {
-		img: string
-		level: number
-		width: number
-		height: number
-		difficulty: 'easy' | 'medium' | 'hard'
-	}) {
-		this._game.start({ img, level, width, height, difficulty })
+	start({ img, difficulty }: { img: string; difficulty: Difficulty }) {
+		return this._game.start({ img, difficulty })
+	}
+
+	peek(on: boolean) {
+		this._game.peek(on)
+	}
+
+	debug() {
+		return this._game.debug()
 	}
 
 	destroy() {
-		this._scene.destroy()
 		this._game.destroy()
+		this._scene.destroy()
 	}
 }
 
