@@ -192,7 +192,11 @@ function clearTimer() {
 			</div>
 			<div class="pill pill--time">
 				<UiIcon name="clock" />
-				<span>{{ getTime }}</span>
+				<!-- Каждый знак в своей ячейке: у шрифта цифры разной ширины, и без
+				     ячеек плашка дёргалась на каждом тике. -->
+				<span class="clock">
+					<i v-for="(ch, i) in getTime" :key="i" :class="ch === ':' ? 'clock__sep' : 'clock__digit'">{{ ch }}</i>
+				</span>
 			</div>
 			<button
 				class="peek"
@@ -332,9 +336,26 @@ function clearTimer() {
 
 	&--time {
 		margin-left: auto;
-		/* Цифры одинаковой ширины: таймер не дрожит на каждом тике. */
-		font-variant-numeric: tabular-nums;
-		min-width: 92px;
+	}
+}
+
+.clock {
+	display: inline-flex;
+
+	/* Luckiest Guy не знает tabular-nums — ширину держим сами. */
+	&__digit,
+	&__sep {
+		display: inline-block;
+		font-style: normal;
+		text-align: center;
+	}
+
+	&__digit {
+		width: 0.66em;
+	}
+
+	&__sep {
+		width: 0.32em;
 	}
 }
 

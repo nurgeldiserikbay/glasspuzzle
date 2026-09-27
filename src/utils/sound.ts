@@ -143,7 +143,7 @@ class SoundEngine {
 	private master!: GainNode
 	private sfx!: GainNode
 	private music!: GainNode
-	private reverb!: ConvolverNode
+	private reverb!: GainNode
 	private noise!: AudioBuffer
 
 	private timer?: ReturnType<typeof setInterval>
@@ -167,7 +167,10 @@ class SoundEngine {
 	private build(offline?: OfflineAudioContext) {
 		const Ctx = window.AudioContext || (window as any).webkitAudioContext
 		if (!offline && !Ctx) return
-		const ctx: BaseAudioContext = offline || new Ctx()
+		// Буфер «для воспроизведения», а не минимальная задержка: на телефоне
+		// короткий буфер легко не успевает наполниться, и звук рвётся. Эффекты
+		// опаздывают на сотые секунды — в пазле это незаметно.
+		const ctx: BaseAudioContext = offline || new Ctx({ latencyHint: 'playback' })
 		this.ctx = ctx
 		this.master = ctx.createGain()
 		this.master.gain.value = 1
@@ -179,18 +182,30 @@ class SoundEngine {
 		this.music.gain.value = 0
 		this.music.connect(this.master)
 
-		// Зал — затухающий шум. Им звучат музыка и немного эффекты.
-		this.reverb = ctx.createConvolver()
-		const len = ctx.sampleRate * 2.4
-		const ir = ctx.createBuffer(2, len, ctx.sampleRate)
-		for (let c = 0; c < 2; c++) {
-			const d = ir.getChannelData(c)
-			for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3)
-		}
-		this.reverb.buffer = ir
+		// Зал — две линии задержки с затухающей обратной связью, в левый и правый
+		// канал. Раньше тут была свёртка с хвостом 2.4 с: на компьютере она
+		// незаметна, а на телефоне забивала аудиопоток, и звук проваливался —
+		// особенно когда поверх музыки звучали эффекты.
+		this.reverb = ctx.createGain()
 		const wet = ctx.createGain()
-		wet.gain.value = 0.35
-		this.reverb.connect(wet).connect(this.master)
+		wet.gain.value = 0.5
+		const merger = ctx.createChannelMerger(2)
+		merger.connect(wet).connect(this.master)
+		;[
+			[0.113, 0.42, 0],
+			[0.167, 0.38, 1],
+		].forEach(([time, feedback, channel]) => {
+			const delay = ctx.createDelay(1)
+			delay.delayTime.value = time
+			const fb = ctx.createGain()
+			fb.gain.value = feedback
+			const lp = ctx.createBiquadFilter()
+			lp.type = 'lowpass'
+			lp.frequency.value = 2400
+			this.reverb.connect(delay)
+			delay.connect(lp).connect(fb).connect(delay)
+			lp.connect(merger, 0, channel)
+		})
 
 		this.noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate)
 		const n = this.noise.getChannelData(0)
@@ -237,8 +252,7 @@ class SoundEngine {
 		}
 		for (const [mult, level] of [
 			[1, 1],
-			[2.76, 0.28],
-			[5.4, 0.08],
+			[2.76, 0.3],
 		]) {
 			const osc = ctx.createOscillator()
 			osc.type = 'sine'
@@ -325,7 +339,7 @@ class SoundEngine {
 				break
 			case 'crack':
 				this.hiss(t, 0.35, 0.22, 'highpass', 1800, 900)
-				for (let i = 0; i < 7; i++)
+				for (let i = 0; i < 4; i++)
 					this.bell(t + 0.02 + Math.random() * 0.3, 2200 + Math.random() * 2200, 0.35, 0.04, this.sfx, 0.2)
 				break
 			case 'whoosh':
@@ -393,13 +407,12 @@ class SoundEngine {
 	// Щипок и удар затухают быстрее колокольчика — чтобы звучать вровень, громче на старте.
 	gain *= kind === 'marimba' ? 1.3 : 1.2
 		env.gain.exponentialRampToValueAtTime(0.0001, t + len)
-		const lp = ctx.createBiquadFilter()
-		lp.type = 'lowpass'
-		lp.frequency.value = kind === 'marimba' ? 1800 : 2600
-		env.connect(lp).connect(out)
+		// Без фильтра: синус и треугольник и так мягкие, а фильтр на каждую ноту
+		// перебора (восемь на такт) заметно грузил аудиопоток телефона.
+		env.connect(out)
 		const send = ctx.createGain()
 		send.gain.value = wet
-		lp.connect(send).connect(this.reverb)
+		env.connect(send).connect(this.reverb)
 		const base = kind === 'marimba' ? freq / 2 : freq
 		const partials: [OscillatorType, number, number][] =
 			kind === 'marimba'
@@ -431,7 +444,7 @@ class SoundEngine {
 		this.music.gain.setTargetAtTime(MUSIC_LEVEL, this.ctx.currentTime, 0.8)
 		// После выключения и включения — та же мелодия с начала, а не новая.
 		this.beginTrack(this.trackIndex < 0 ? this.nextTrack() : this.trackIndex, this.ctx.currentTime + 0.3)
-		this.timer = setInterval(() => this.schedule(), 120)
+		this.timer = setInterval(() => this.schedule(), 200)
 	}
 
 	private stopMusic() {
@@ -473,7 +486,11 @@ class SoundEngine {
 		if (!this.ctx) return
 		const track = TRACKS[this.trackIndex]
 		const beat = 60 / track.bpm
-		const horizon = now + 0.4
+		// Запас вперёд — секунда: WebView на телефоне может придержать таймер, и
+		// при коротком запасе музыка обрывалась до следующего срабатывания.
+		const horizon = now + 1
+		// Что уже безнадёжно опоздало, пропускаем, а не играем кучей разом.
+		const late = (t: number) => this.ctx instanceof AudioContext && t < now - 0.08
 		const bars = track.chords.length
 
 		while (this.nextBar < bars && this.startAt + this.nextBar * 4 * beat < horizon) {
@@ -484,7 +501,7 @@ class SoundEngine {
 			const note = this.notes[this.nextNote]
 			const t = this.startAt + note.beat * beat
 			if (t > horizon) break
-			this.voice(track.voice, t, midi(note.midi), 1.6 * note.len + 0.6, 0.07, this.music, 0.6)
+			if (!late(t)) this.voice(track.voice, t, midi(note.midi), 1.6 * note.len + 0.6, 0.07, this.music, 0.6)
 			this.nextNote++
 		}
 
@@ -519,14 +536,14 @@ class SoundEngine {
 		lp.frequency.value = 900
 		const env = ctx.createGain()
 		env.gain.setValueAtTime(0, t)
-		env.gain.linearRampToValueAtTime(0.035, t + dur * 0.35)
+		env.gain.linearRampToValueAtTime(0.05, t + dur * 0.35)
 		env.gain.linearRampToValueAtTime(0.0001, t + dur + 0.6)
 		lp.connect(env).connect(this.music)
 		const send = ctx.createGain()
 		send.gain.value = 0.5
 		env.connect(send).connect(this.reverb)
 		for (const n of tones)
-			for (const detune of [-5, 5]) {
+			for (const detune of [4]) {
 				const osc = ctx.createOscillator()
 				osc.type = 'triangle'
 				osc.frequency.value = midi(n)

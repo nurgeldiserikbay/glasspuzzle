@@ -132,7 +132,9 @@ const GEMS = [
 		flex-direction: column;
 		justify-content: space-between;
 		align-items: center;
-		gap: 18px;
+		/* С запасом на оправу и толщину глянцевой кнопки: при 18px ссылка
+		   почти прилипала к её нижнему краю. */
+		gap: 34px;
 		/* Кнопка стоит на подоконнике, как на макете. */
 		margin-top: auto;
 		margin-bottom: 15vh;

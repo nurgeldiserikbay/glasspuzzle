@@ -61,7 +61,9 @@ for (const job of JOBS) {
 	const res = await page.evaluate(
 		async ({ code, what, seconds }) => {
 			const GlassSound = new Function(code + ';return GlassSound')()
+			const started = performance.now()
 			const buf = await GlassSound.renderSound(what, seconds)
+			const cost = (performance.now() - started) / seconds
 			const ch = [buf.getChannelData(0), buf.getChannelData(1)]
 			let peak = 0
 			let sum = 0
@@ -93,13 +95,15 @@ for (const job of JOBS) {
 			let bin = ''
 			const u8 = new Uint8Array(bytes.buffer)
 			for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000))
-			return { peak, rms, wav: btoa(bin) }
+			return { peak, rms, cost, wav: btoa(bin) }
 		},
 		{ code: CODE, what: job.what, seconds: job.seconds }
 	)
 	fs.writeFileSync(path.join(OUT, `${job.name}.wav`), Buffer.from(res.wav, 'base64'))
 	const verdict = res.peak >= 0.99 ? 'ПЕРЕГРУЗ' : res.rms < 0.005 ? 'ТИШИНА' : 'ok'
-	console.log(job.name.padEnd(18), 'пик', res.peak.toFixed(2), 'средняя', res.rms.toFixed(3), verdict)
+	// Нагрузка — сколько миллисекунд процессора уходит на секунду звука. Офлайн
+	// на компьютере; на телефоне в разы больше, но соотношение то же.
+	console.log(job.name.padEnd(18), 'пик', res.peak.toFixed(2), 'средняя', res.rms.toFixed(3), 'нагрузка', res.cost.toFixed(1), 'мс/с', verdict)
 }
 
 await browser.close()
