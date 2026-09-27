@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 import OtherGames from '@/components/OtherGames.vue'
 import OtherGamesIcon from '@/components/OtherGamesIcon.vue'
+import SoundToggles from '@/components/SoundToggles.vue'
 
 import { usePageStore } from '@/store/pageStore'
 
@@ -48,6 +49,9 @@ const GEMS = [
 		>
 			<OtherGamesIcon />
 		</button>
+
+		<!-- Музыка и эффекты — в противоположном углу от «Других игр». -->
+		<SoundToggles class="start-page__sound" />
 
 		<div class="start-page__body">
 			<div class="start-page__logo">
@@ -208,6 +212,13 @@ const GEMS = [
    position: fixed, а не absolute: экран одностраничный и на весь вьюпорт, и так
    значок не зависит от того, позиционирован ли предок.
 */
+.start-page__sound {
+	position: fixed;
+	top: 12px;
+	left: 12px;
+	z-index: 5;
+}
+
 .promo-games {
 	position: fixed;
 	top: 12px;

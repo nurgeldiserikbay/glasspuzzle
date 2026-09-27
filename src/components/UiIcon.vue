@@ -17,6 +17,10 @@ defineProps<{
 		| 'shard'
 		| 'replay'
 		| 'play'
+		| 'music'
+		| 'music-off'
+		| 'sound'
+		| 'sound-off'
 }>()
 </script>
 
@@ -64,6 +68,20 @@ defineProps<{
 		<template v-else-if="name === 'shard'">
 			<path d="M5 8.5 11 3.5l8 4-2 10-8.5 3L4 14Z" />
 			<path d="m11 3.5-1.5 8 7.5-4M9.5 11.5 8.5 20.5" />
+		</template>
+		<template v-else-if="name === 'music' || name === 'music-off'">
+			<path d="M9 17.5V6l10-2v11.5" />
+			<circle cx="6.5" cy="17.5" r="2.5" />
+			<circle cx="16.5" cy="15.5" r="2.5" />
+			<path v-if="name === 'music-off'" d="M3.5 3.5l17 17" />
+		</template>
+		<template v-else-if="name === 'sound' || name === 'sound-off'">
+			<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" />
+			<template v-if="name === 'sound'">
+				<path d="M15.5 9a4 4 0 0 1 0 6" />
+				<path d="M18 6.5a7.5 7.5 0 0 1 0 11" />
+			</template>
+			<path v-else d="m15.5 9.5 5 5m0-5-5 5" />
 		</template>
 		<template v-else-if="name === 'play'">
 			<path d="M8 5.5v13l10-6.5Z" fill="currentColor" />

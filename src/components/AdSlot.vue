@@ -115,6 +115,13 @@ function tap() {
 	height: var(--ad-slot, 56px);
 	width: 100%;
 	padding: 0 12px;
+	/*
+	   Без этой строки полоса была шире слота ровно на свои боковые отступы:
+	   `width: 100%` плюс `padding: 0 12px` в content-box давали 24 лишних
+	   пикселя, а `overflow: hidden` у .slot срезал их вместе с правым краем
+	   кнопки OPEN. Замерено на 390, 360 и 320px — срез был на всех.
+	*/
+	box-sizing: border-box;
 	border: none;
 	background: transparent;
 	text-align: left;

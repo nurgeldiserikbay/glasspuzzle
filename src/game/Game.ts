@@ -14,6 +14,7 @@ import { Piece } from './Piece'
 import { Group } from './Group'
 import { Tray } from './Tray'
 import { PIECE_COUNT, neighbors, shatter } from './shatter'
+import { sound } from '@/utils/sound'
 
 /**
  * Главное правило: куски склеиваются друг с другом. Два куска (или две
@@ -300,6 +301,7 @@ class Game {
 
 		this.later(1.1, () => {
 			// Трещины и короткая встряска поля.
+			sound.play('crack')
 			this.tween(this.cracks, { alpha: 1, duration: 0.12 })
 			const bx = this.board.x
 			this.tween([this.board, this.peekLayer], {
@@ -335,6 +337,7 @@ class Game {
 	}
 
 	private sendToTray() {
+		sound.play('whoosh')
 		const rules = RULES[this.difficulty]
 		const order = shuffle([...this.pieces])
 		order.forEach((piece) => {
@@ -528,6 +531,7 @@ class Game {
 		const from = piece.view.scale.x
 		const trayIndex = this.tray.take(piece, this.top)
 		const group = new Group(piece)
+		sound.play('pick')
 		this.top.addChild(group.view)
 		group.view.position.set(at.x, at.y)
 		group.view.scale.set(from)
@@ -543,6 +547,7 @@ class Game {
 
 	private rotatePiece(piece: Piece) {
 		if (!RULES[this.difficulty].rotate) return
+		sound.play('rotate')
 		piece.rot = (piece.rot + 1) % 4
 		piece.drawThickness()
 		this.spin(piece.view, piece.rot)
@@ -550,6 +555,7 @@ class Game {
 
 	private rotateGroup(group: Group) {
 		if (!RULES[this.difficulty].rotate) return
+		sound.play('rotate')
 		group.rot = (group.rot + 1) % 4
 		group.drawUnder()
 		this.spin(group.view, group.rot)
@@ -592,6 +598,7 @@ class Game {
 
 		const others = this.groups.filter((g) => g !== group).length
 		if (from === 'tray' && others >= BENCH_LIMIT) {
+			sound.play('full')
 			this.toTray(group, trayIndex)
 			this.option.onBenchFull?.()
 			return
@@ -643,6 +650,7 @@ class Game {
 	}
 
 	private afterMerge(group: Group) {
+		sound.play('join', group.size)
 		this.field.addChild(group.view)
 		group.fieldAt = this.toImage(group.view.position)
 		group.view.scale.set(this.scale * 1.06)
@@ -654,6 +662,8 @@ class Game {
 	}
 
 	private toField(group: Group) {
+		// Звук — только когда группу положили рукой, а не когда она уже лежала.
+		if (group.view.parent === this.top) sound.play('drop')
 		const { x, y } = this.clampToField(group, group.view.position)
 		this.field.addChild(group.view)
 		if (!this.groups.includes(group)) this.groups.push(group)
@@ -708,6 +718,7 @@ class Game {
 					piece.view.eventMode = 'none'
 					piece.setEdgeAlpha(0.45)
 				}
+				sound.play('join', this.pieces.filter((p) => p.place === 'board').length + 1)
 				this.sparkle(target.x, target.y)
 				this.emitState()
 				this.checkWin()
@@ -721,6 +732,7 @@ class Game {
 		const whole = this.groups.length === 1 && this.groups[0].size === this.pieces.length
 		if (!inFrame && !whole) return
 		this.setPhase('done')
+		this.later(0.35, () => sound.play('win'))
 
 		if (whole) {
 			// Собранная картинка встаёт в рамку ровно, как была до разбития.

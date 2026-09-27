@@ -12,12 +12,25 @@ import { useAdsStore } from '@/store/adsStore'
 
 import { usePageStore } from '@/store/pageStore'
 import { useGameStore } from '@/store/gameStore'
+import { sound } from '@/utils/sound'
 
 const adsStore = useAdsStore()
 const pageStore = usePageStore()
 const gameStore = useGameStore()
 
 onMounted(async () => {
+	// Звук можно включить только по касанию: первое касание создаёт аудио и,
+	// если музыка не выключена, запускает её. Нажатие кнопки — тихий щелчок.
+	document.addEventListener(
+		'pointerdown',
+		(e) => {
+			sound.unlock()
+			const target = e.target as HTMLElement | null
+			if (target?.closest?.('button, .level')) sound.play('click')
+		},
+		{ capture: true }
+	)
+
 	// Load saved progress on every platform (web included), not just Android
 	gameStore.loadData()
 
