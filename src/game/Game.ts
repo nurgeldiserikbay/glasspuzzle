@@ -242,9 +242,9 @@ class Game {
 
 	/**
 	 * Куда поставить группу, чтобы она целиком осталась на столе над лотком.
-	 * Считаются центры всех её кусков с учётом поворота плюс полкуска запаса:
-	 * раньше в поле держался только центр группы, и большая группа могла
-	 * наполовину уехать за верхний край. Группа крупнее стола — по центру.
+	 * Считаются вершины всех её кусков с учётом поворота: раньше в поле
+	 * держался только центр группы, и большая группа могла уехать за верхний
+	 * край или нависнуть над лотком. Группа крупнее стола — по центру.
 	 */
 	private clampToField(group: Group, p: IPoint) {
 		const { width: W } = this.scene.app.screen
@@ -256,17 +256,20 @@ class Game {
 		let maxX = -Infinity
 		let minY = Infinity
 		let maxY = -Infinity
-		for (const piece of group.pieces) {
-			const dx = (piece.shape.center.x - pivot.x) * this.scale
-			const dy = (piece.shape.center.y - pivot.y) * this.scale
-			const x = dx * cos - dy * sin
-			const y = dx * sin + dy * cos
-			const r = piece.shape.radius * this.scale * 0.5
-			minX = Math.min(minX, x - r)
-			maxX = Math.max(maxX, x + r)
-			minY = Math.min(minY, y - r)
-			maxY = Math.max(maxY, y + r)
-		}
+		// По настоящим вершинам, а не по центрам с запасом: угол группы, заехавший
+		// на лоток, перехватывал нажатие на кусок в ящике — хваталась группа, и
+		// кусок из лотка «не брался».
+		for (const piece of group.pieces)
+			for (const v of piece.shape.points) {
+				const dx = (v.x - pivot.x) * this.scale
+				const dy = (v.y - pivot.y) * this.scale
+				const x = dx * cos - dy * sin
+				const y = dx * sin + dy * cos
+				minX = Math.min(minX, x)
+				maxX = Math.max(maxX, x)
+				minY = Math.min(minY, y)
+				maxY = Math.max(maxY, y)
+			}
 		const axis = (v: number, lo: number, hi: number, min: number, max: number) =>
 			hi - lo >= max - min ? Math.min(hi - max, Math.max(lo - min, v)) : (lo + hi) / 2 - (min + max) / 2
 		return {
@@ -463,14 +466,17 @@ class Game {
 			const local = piece.view.toLocal(p)
 			return piece.contains(local.x, local.y)
 		}
+		// В полосе лотка первыми — куски в ящиках: касание лотка предназначено ему,
+		// даже если над ним нависла группа со стола.
+		const inStrip = p.y >= this.tray.y && p.x > this.tray.x + 4 && p.x < this.tray.x + this.tray.width - 4
+		const inTray = inStrip ? this.pieces.find((q) => q.place === 'tray' && hit(q)) : undefined
+		if (inTray) return inTray
 		const views = [...this.field.children].reverse()
 		for (const view of views) {
 			const group = this.groups.find((g) => g.view === view)
 			const piece = group?.pieces.find(hit)
 			if (piece) return piece
 		}
-		const inStrip = p.y >= this.tray.y && p.x > this.tray.x + 4 && p.x < this.tray.x + this.tray.width - 4
-		if (inStrip) return this.pieces.find((q) => q.place === 'tray' && hit(q)) || null
 		return null
 	}
 
