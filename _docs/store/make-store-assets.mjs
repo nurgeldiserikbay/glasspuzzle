@@ -89,10 +89,14 @@ for (const name of ['splash.png', 'splash-dark.png'])
 const feature = await sharp(path.join(SRC, 'feature.png')).resize(1024, 500, { fit: 'cover' }).toBuffer()
 const logoSmall = await sharp(path.join(SRC, 'logo.png')).trim({ threshold: 1 }).resize({ width: 430 }).toBuffer()
 const lm = await sharp(logoSmall).metadata()
-await sharp(feature)
+const withLogo = await sharp(feature)
 	.composite([{ input: logoSmall, left: 40, top: Math.round((500 - lm.height) / 2) }])
 	.png()
-	.toFile(path.join(STORE, 'feature-1024x500.png'))
+	.toBuffer()
+// Play принимает обложку только без альфа-канала (JPEG или 24-битный PNG).
+// Отдельным шагом: в одном конвейере sharp накладывает логотип последним,
+// и прозрачность возвращается.
+await sharp(withLogo).removeAlpha().png().toFile(path.join(STORE, 'feature-1024x500.png'))
 
 for (const f of ['icon-only.png', 'icon-foreground.png', 'icon-background.png', 'splash.png'])
 	console.log('resources/' + f, (await sharp(path.join(RES, f)).metadata()).width)
