@@ -31,13 +31,14 @@ withDefaults(
 	cursor: pointer;
 	color: #fff;
 	letter-spacing: 1px;
-	// Белые буквы на светлом тоне читаются только с тёмным контуром.
-	text-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+	// Белые буквы на светлом стекле читаются только с тёмным контуром.
+	text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
 
 	&--big {
-		min-width: 200px;
-		padding: 16px 30px 12px;
-		font-size: 30px;
+		min-width: 230px;
+		padding: 18px 34px 12px;
+		font-size: 34px;
+		border-radius: 24px;
 	}
 
 	&--small {
@@ -47,16 +48,16 @@ withDefaults(
 	}
 
 	&--mint {
-		@include chunky(var(--mint), var(--mint-deep), 6px);
+		@include gloss(var(--mint-light), var(--mint), var(--mint-deep));
 	}
 	&--sun {
-		@include chunky(var(--sun), var(--sun-deep), 6px);
+		@include gloss(var(--sun-light), var(--sun), var(--sun-deep));
 	}
 	&--sky {
-		@include chunky(var(--sky), var(--sky-deep), 6px);
+		@include gloss(var(--sky-light), var(--sky), var(--sky-deep));
 	}
 	&--coral {
-		@include chunky(var(--coral), var(--coral-deep), 6px);
+		@include gloss(var(--coral-light), var(--coral), var(--coral-deep));
 	}
 }
 </style>

@@ -47,7 +47,6 @@ export class Tray {
 	constructor() {
 		this.view = new Container()
 		this.panel = new Graphics()
-		this.panel.eventMode = 'static'
 		this.strip = new Container()
 		this.clip = new Graphics()
 		this.strip.mask = this.clip
@@ -61,11 +60,6 @@ export class Tray {
 		this.height = 0
 		this.scroll = 0
 		this.velocity = 0
-	}
-
-	/** Касание пустого места лотка — начало прокрутки. */
-	get background() {
-		return this.panel
 	}
 
 	layout(x: number, y: number, width: number, height: number, pieceScale: number) {
@@ -139,12 +133,18 @@ export class Tray {
 			this.velocity = 0
 			return
 		}
+		const before = this.scroll
 		this.setScroll(this.scroll + this.velocity * deltaMS)
+		// Упёрлись в край — дальше не катимся, иначе лента «липнет» к краю ещё
+		// секунду и глотает касания.
+		if (this.scroll === before) this.velocity = 0
 		this.velocity *= Math.pow(0.992, deltaMS)
 	}
 
 	fling(velocity: number) {
-		this.velocity = velocity
+		// Скорость в пикселях за миллисекунду. Потолок — чтобы резкий бросок не
+		// уносил ленту через весь лоток.
+		this.velocity = Math.max(-2.5, Math.min(2.5, velocity))
 	}
 
 	stop() {
@@ -235,6 +235,9 @@ export class Tray {
 		if (at === -1) return -1
 		const [{ box }] = this.items.splice(at, 1)
 
+		// Кусок могли схватить, пока он ещё доезжал в ящик или крутился: эти
+		// анимации к ящику, и после взятия они только сбили бы кусок с места.
+		piece.stopTweens()
 		const global = piece.view.getGlobalPosition()
 		parent.addChild(piece.view)
 		const local = parent.toLocal(global)

@@ -113,13 +113,16 @@ async function start() {
 				// в счёт времени не входит.
 				if (p === 'play') {
 					setTimer()
-					if (state.value.rotate) showHint('Tap a piece to turn it')
+					// Сначала — как собирать, потом — как вращать, если вращать нужно.
+					showHint('Join pieces that fit together')
+					if (state.value.rotate)
+						hintTimer = setTimeout(() => showHint('Tap a piece to turn it'), 2800)
 				} else clearTimer()
 			},
 			onBenchFull: () => {
 				benchShake.value = false
 				requestAnimationFrame(() => (benchShake.value = true))
-				showHint('Only 3 loose pieces on the table')
+				showHint('Table is full: join pieces first')
 			},
 		},
 	})
@@ -258,6 +261,12 @@ function clearTimer() {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
+	/* Окно в сад — нарочно тише стартового фона, чтобы куски на столе читались. */
+	/* Светлая вуаль поверх фона — куски на столе должны читаться лучше сада. */
+	background:
+		linear-gradient(rgba(255, 250, 240, 0.3), rgba(255, 250, 240, 0.3)),
+		url('@/assets/design/bg-play.webp') center bottom / cover no-repeat,
+		var(--sky-bottom);
 	/*
 	   Низ отдан рекламной зоне: в ней либо баннер, либо кросс-промо, но пустой
 	   она не бывает. Высоту диктует само объявление (--ad-band), а 12px —
@@ -330,7 +339,7 @@ function clearTimer() {
 }
 
 .peek {
-	@include chunky(var(--sun), var(--sun-deep), 4px);
+	@include gloss(var(--sun-light), var(--sun), var(--sun-deep));
 	display: flex;
 	align-items: center;
 	justify-content: center;

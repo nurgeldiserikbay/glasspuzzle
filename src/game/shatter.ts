@@ -136,3 +136,25 @@ export function shatter(count: number, width: number, height: number) {
 	}
 	return best
 }
+
+/**
+ * Кто с кем граничит по стороне. У соседних ячеек Вороного общие вершины
+ * совпадают до бита, так что две общие вершины — это общая сторона. Одной
+ * мало: куски, сошедшиеся углом, соседями не считаются, их не склеить.
+ */
+export function neighbors(pieces: IPieceShape[]) {
+	const owners = new Map<string, number[]>()
+	pieces.forEach((piece, i) => {
+		for (const p of piece.points) {
+			const key = `${p.x},${p.y}`
+			const list = owners.get(key)
+			if (list) list.push(i)
+			else owners.set(key, [i])
+		}
+	})
+	const shared = pieces.map(() => new Map<number, number>())
+	for (const list of owners.values())
+		for (const a of list)
+			for (const b of list) if (a !== b) shared[a].set(b, (shared[a].get(b) || 0) + 1)
+	return shared.map((m) => new Set([...m].filter(([, n]) => n >= 2).map(([j]) => j)))
+}

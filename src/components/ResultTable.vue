@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import UiIcon from '@/components/UiIcon.vue'
+import ShineTitle from '@/components/ShineTitle.vue'
 
 defineProps<{
 	/** Собранная картинка — показывается целиком как награда. */
@@ -10,13 +11,32 @@ defineProps<{
 }>()
 
 const $emits = defineEmits(['close', 'next'])
+
+/** Самоцветы по углам собранной картинки — выпрыгивают по очереди. */
+const GEMS = [
+	{ n: 3, cls: 'result__gem--tl' },
+	{ n: 1, cls: 'result__gem--tr' },
+	{ n: 2, cls: 'result__gem--bl' },
+	{ n: 4, cls: 'result__gem--br' },
+].map((g) => ({ cls: g.cls, src: new URL(`../assets/design/gem-${g.n}.webp`, import.meta.url).href }))
 </script>
 
 <template>
 	<div class="result">
 		<div class="result__card">
-			<div class="result__title">Well done!</div>
-			<img class="result__img" :src="img" alt="" />
+			<ShineTitle tone="sun" class="result__title">Well done!</ShineTitle>
+			<div class="result__pic">
+				<img class="result__img" :src="img" alt="" />
+				<img
+					v-for="gem in GEMS"
+					:key="gem.cls"
+					class="result__gem"
+					:class="gem.cls"
+					:src="gem.src"
+					alt=""
+					aria-hidden="true"
+				/>
+			</div>
 			<div class="result__time">
 				<UiIcon name="clock" />
 				<span>{{ time }}</span>
@@ -57,6 +77,9 @@ const $emits = defineEmits(['close', 'next'])
 		@include card;
 		width: 100%;
 		max-width: 340px;
+		border-width: 3px;
+		border-radius: 26px;
+		box-shadow: 0 8px 0 var(--card-depth), 0 18px 40px rgba(59, 61, 107, 0.25);
 		padding: 22px 20px 26px;
 		box-sizing: border-box;
 		display: flex;
@@ -67,12 +90,49 @@ const $emits = defineEmits(['close', 'next'])
 	}
 
 	&__title {
-		font-size: 34px;
-		color: var(--sun);
-		letter-spacing: 1px;
-		-webkit-text-stroke: 2px var(--sun-deep);
-		paint-order: stroke fill;
-		text-shadow: 0 3px 0 var(--sun-deep);
+		font-size: 40px;
+	}
+
+	&__pic {
+		position: relative;
+		display: flex;
+		justify-content: center;
+		max-width: 100%;
+	}
+
+	&__gem {
+		position: absolute;
+		width: 46px;
+		height: 46px;
+		object-fit: contain;
+		filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.2));
+		animation: gem-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+		pointer-events: none;
+
+		&--tl {
+			top: 8%;
+			left: -30px;
+			--r: -18deg;
+			animation-delay: 0.25s;
+		}
+		&--tr {
+			top: 4%;
+			right: -30px;
+			--r: 14deg;
+			animation-delay: 0.35s;
+		}
+		&--bl {
+			bottom: 6%;
+			left: -28px;
+			--r: -8deg;
+			animation-delay: 0.45s;
+		}
+		&--br {
+			bottom: 10%;
+			right: -28px;
+			--r: 20deg;
+			animation-delay: 0.55s;
+		}
 	}
 
 	&__img {
@@ -83,8 +143,10 @@ const $emits = defineEmits(['close', 'next'])
 		max-width: 100%;
 		max-height: 38vh;
 		border-radius: 12px;
-		border: 4px solid #fff;
-		box-shadow: 0 4px 0 var(--card-edge);
+		border: 6px solid #fff;
+		box-shadow:
+			0 0 0 2px var(--card-edge),
+			0 6px 0 2px var(--card-depth);
 		box-sizing: border-box;
 	}
 
@@ -103,7 +165,9 @@ const $emits = defineEmits(['close', 'next'])
 
 	&__btns {
 		display: flex;
-		gap: 14px;
+		gap: 20px;
+		padding: 0 4px 6px;
+		box-sizing: border-box;
 		width: 100%;
 		justify-content: center;
 	}
@@ -122,14 +186,14 @@ const $emits = defineEmits(['close', 'next'])
 	}
 
 	&__home {
-		@include chunky(var(--sky), var(--sky-deep), 5px);
+		@include gloss(var(--sky-light), var(--sky), var(--sky-deep));
 		width: 64px;
 		padding: 0;
 		font-size: 30px;
 	}
 
 	&__next {
-		@include chunky(var(--mint), var(--mint-deep), 5px);
+		@include gloss(var(--mint-light), var(--mint), var(--mint-deep));
 		flex-grow: 1;
 		max-width: 200px;
 		padding: 4px 18px 0;
@@ -143,6 +207,16 @@ const $emits = defineEmits(['close', 'next'])
 @keyframes fade {
 	from {
 		opacity: 0;
+	}
+}
+
+@keyframes gem-pop {
+	from {
+		transform: scale(0) rotate(var(--r));
+		opacity: 0;
+	}
+	to {
+		transform: scale(1) rotate(var(--r));
 	}
 }
 

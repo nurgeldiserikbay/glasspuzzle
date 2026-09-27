@@ -16,6 +16,7 @@ defineProps<{
 		| 'clock'
 		| 'shard'
 		| 'replay'
+		| 'play'
 }>()
 </script>
 
@@ -63,6 +64,9 @@ defineProps<{
 		<template v-else-if="name === 'shard'">
 			<path d="M5 8.5 11 3.5l8 4-2 10-8.5 3L4 14Z" />
 			<path d="m11 3.5-1.5 8 7.5-4M9.5 11.5 8.5 20.5" />
+		</template>
+		<template v-else-if="name === 'play'">
+			<path d="M8 5.5v13l10-6.5Z" fill="currentColor" />
 		</template>
 		<template v-else-if="name === 'replay'">
 			<path d="M5 12a7 7 0 1 0 2.05-4.95" />

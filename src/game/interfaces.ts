@@ -8,7 +8,7 @@ export type GamePhase = 'idle' | 'intro' | 'play' | 'done'
 export interface IGameState {
 	total: number
 	placed: number
-	/** Сколько кусков отложено на поле не на своих местах. */
+	/** Сколько групп лежит на столе (одиночный кусок — тоже группа). */
 	bench: number
 	benchLimit: number
 	/** Вращаются ли куски на этой сложности — от этого зависит подсказка. */

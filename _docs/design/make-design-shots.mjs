@@ -164,6 +164,21 @@ if (hasHook) {
 	await page.waitForSelector('.result', { timeout: 15000 })
 	await wait(1500)
 	await shot('08-win')
+
+	// Средняя сложность: рамки нет, всё поле — стол, куски склеиваются друг
+	// с другом. На лёгкой этого не видно — там куски защёлкиваются в рамку.
+	await page.goto(URL_BASE)
+	await page.click('.ui-button')
+	await page.waitForSelector('.level-page__levels')
+	await page.locator('.level-page__levels .level').first().click()
+	await page.locator('.mode--sky').click()
+	await page.waitForFunction(() => document.body.dataset.phase === 'play', null, { timeout: 10000 })
+	await wait(900) // видна подсказка «как собирать»
+	await shot('09-medium-start')
+	await debug('solve', 0.4)
+	await debug('fillBench')
+	await wait(900)
+	await shot('10-medium-table')
 }
 
 await browser.close()
@@ -172,4 +187,26 @@ if (errors.length) {
 	console.log('Ошибки на странице:')
 	for (const e of errors) console.log('  ', e)
 	process.exitCode = 1
+}
+
+// Обзорный лист: все кадры набора на одной картинке с подписями — в чат
+// удобнее загрузить одну картинку, чем дюжину.
+{
+	const shots = fs.readdirSync(OUT).filter((f) => /^\d.*\.png$/.test(f)).sort()
+	const cells = shots
+		.map((f) => {
+			const data = fs.readFileSync(path.join(OUT, f)).toString('base64')
+			return `<figure><img src="data:image/png;base64,${data}"><figcaption>${f.replace('.png', '')}</figcaption></figure>`
+		})
+		.join('')
+	const html = `<style>body{margin:0;background:#f4efe4;font:600 22px system-ui;color:#3b3d6b}
+		main{display:grid;grid-template-columns:repeat(4,270px);gap:24px;padding:24px}
+		figure{margin:0}img{width:270px;height:480px;display:block;border-radius:14px;box-shadow:0 4px 0 #e0c08e}
+		figcaption{padding:8px 4px 0}</style><main>${cells}</main>`
+	const b = await chromium.launch().catch(() => chromium.launch({ channel: 'chrome' }))
+	const p = await b.newPage({ viewport: { width: 4 * 270 + 5 * 24, height: 400 }, deviceScaleFactor: 2 })
+	await p.setContent(html)
+	await p.screenshot({ path: path.join(OUT, '..', `overview-${path.basename(OUT)}.png`), fullPage: true })
+	await b.close()
+	console.log('   overview')
 }

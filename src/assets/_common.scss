@@ -26,3 +26,50 @@
 	box-shadow: 0 5px 0 var(--card-depth);
 	border-radius: 18px;
 }
+
+/*
+   Глянцевая кнопка с макета: цветное «стекло» с переливом сверху вниз,
+   блик в левом верхнем углу, тёмная кромка снизу внутри и кремовая оправа
+   с толщиной — кнопка вставлена в оправу, как самоцвет.
+
+   Цвета — готовые оттенки из :root, без color-mix: WebView на старых
+   Android его не знает.
+*/
+@mixin gloss($light, $face, $edge) {
+	position: relative;
+	isolation: isolate;
+	background: linear-gradient(180deg, $light 0%, $face 48%, $face 100%);
+	border: 2px solid $edge;
+	box-shadow:
+		inset 0 -5px 0 $edge,
+		inset 0 2px 0 rgba(255, 255, 255, 0.55),
+		0 0 0 4px var(--card),
+		0 7px 0 4px var(--card-depth);
+	transition:
+		transform 0.08s,
+		box-shadow 0.08s;
+
+	// Блик — мягкое пятно света, а не пластиковая полоса во всю ширину.
+	&::before {
+		content: '';
+		position: absolute;
+		top: 7px;
+		left: 12px;
+		width: 18px;
+		height: 10px;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.75);
+		transform: rotate(-20deg);
+		pointer-events: none;
+		z-index: -1;
+	}
+
+	&:active {
+		transform: translateY(4px);
+		box-shadow:
+			inset 0 -2px 0 $edge,
+			inset 0 2px 0 rgba(255, 255, 255, 0.55),
+			0 0 0 4px var(--card),
+			0 3px 0 4px var(--card-depth);
+	}
+}
