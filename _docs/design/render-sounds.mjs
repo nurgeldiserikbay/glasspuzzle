@@ -46,10 +46,14 @@ await page.setContent('<html><body></body></html>')
 const CODE = fs.readFileSync(BUNDLE, 'utf8')
 
 const JOBS = [
-	{ name: 'music-1-morning', what: 0, seconds: 45 },
-	{ name: 'music-2-garden', what: 1, seconds: 45 },
-	{ name: 'music-3-lullaby', what: 2, seconds: 45 },
-	{ name: 'sfx-all', what: 'sfx', seconds: 12 },
+	{ name: 'music-1-morning', what: 0, seconds: 40 },
+	{ name: 'music-2-garden', what: 1, seconds: 40 },
+	{ name: 'music-3-lullaby', what: 2, seconds: 40 },
+	{ name: 'music-4-stream', what: 3, seconds: 40 },
+	{ name: 'music-5-clouds', what: 4, seconds: 40 },
+	{ name: 'music-6-evening', what: 5, seconds: 40 },
+	{ name: 'sfx-all', what: 'sfx', seconds: 11 },
+	{ name: 'win-over-music', what: 'win', seconds: 10 },
 ]
 
 for (const job of JOBS) {

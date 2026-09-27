@@ -47,8 +47,9 @@ function writeFlag(key: string, on: boolean) {
 export const sfxOn = ref(readFlag(KEY_SFX))
 export const musicOn = ref(readFlag(KEY_MUSIC))
 
-/** Громкость музыки относительно эффектов: фон, но слышный на динамике телефона. */
-const MUSIC_LEVEL = 0.85
+/** Громкость музыки и эффектов. Музыка — фон, эффекты заметно громче её. */
+const MUSIC_LEVEL = 0.5
+const SFX_LEVEL = 1.35
 
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12)
 
@@ -61,17 +62,29 @@ interface ITrack {
 	/** Аккорды по тактам — ступени мажора (0 = I, 5 = vi …). */
 	chords: number[]
 	seed: number
+	/** Тембр мелодии: шкатулка, мягкая маримба или арфа. */
+	voice: Voice
+	/** Под мелодией — тянущийся аккорд (pad) или перебор (arp). */
+	accomp: 'pad' | 'arp'
 }
+
+type Voice = 'box' | 'marimba' | 'harp'
 
 const MAJOR = [0, 2, 4, 5, 7, 9, 11]
 
 const TRACKS: ITrack[] = [
-	// «Утро»: фа мажор, I–vi–IV–V.
-	{ root: 65, bpm: 72, chords: [0, 5, 3, 4, 0, 5, 3, 4], seed: 7 },
+	// «Утро»: фа мажор, I–vi–IV–V, шкатулка.
+	{ root: 65, bpm: 72, chords: [0, 5, 3, 4, 0, 5, 3, 4], seed: 7, voice: 'box', accomp: 'pad' },
 	// «Сад»: ре мажор, медленнее, I–IV–vi–V.
-	{ root: 62, bpm: 64, chords: [0, 3, 5, 4, 0, 3, 1, 4], seed: 21 },
+	{ root: 62, bpm: 64, chords: [0, 3, 5, 4, 0, 3, 1, 4], seed: 21, voice: 'box', accomp: 'pad' },
 	// «Колыбельная»: до мажор, совсем тихо, I–iii–IV–I.
-	{ root: 60, bpm: 58, chords: [0, 2, 3, 0, 5, 3, 4, 0], seed: 42 },
+	{ root: 60, bpm: 58, chords: [0, 2, 3, 0, 5, 3, 4, 0], seed: 42, voice: 'box', accomp: 'pad' },
+	// «Ручей»: соль мажор, живее, перебор арфы под маримбой.
+	{ root: 55, bpm: 80, chords: [0, 4, 5, 3, 0, 4, 3, 4], seed: 11, voice: 'marimba', accomp: 'arp' },
+	// «Облака»: ми-бемоль мажор, маримба над мягким аккордом.
+	{ root: 63, bpm: 66, chords: [0, 3, 0, 4, 5, 3, 1, 4], seed: 33, voice: 'marimba', accomp: 'pad' },
+	// «Вечер»: ля мажор, арфа с перебором, самая неторопливая.
+	{ root: 57, bpm: 56, chords: [0, 5, 1, 4, 0, 5, 3, 4], seed: 58, voice: 'harp', accomp: 'arp' },
 ]
 
 /** Детерминированный генератор: мелодия одна и та же при каждом запуске. */
@@ -134,8 +147,11 @@ class SoundEngine {
 	private noise!: AudioBuffer
 
 	private timer?: ReturnType<typeof setInterval>
-	private trackIndex = 0
-	private loops = 0
+	private trackIndex = -1
+	/** Сколько кругов сыграла текущая мелодия — после двух она сменяется. */
+	private rounds = 0
+	/** Очередь мелодий: перемешанный список, каждая по разу за круг. */
+	private queue: number[] = []
 	private notes: INote[] = []
 	private startAt = 0
 	private nextNote = 0
@@ -157,7 +173,7 @@ class SoundEngine {
 		this.master.gain.value = 1
 		this.master.connect(ctx.destination)
 		this.sfx = ctx.createGain()
-		this.sfx.gain.value = sfxOn.value ? 1 : 0
+		this.sfx.gain.value = sfxOn.value ? SFX_LEVEL : 0
 		this.sfx.connect(this.master)
 		this.music = ctx.createGain()
 		this.music.gain.value = 0
@@ -193,7 +209,7 @@ class SoundEngine {
 	setSfx(on: boolean) {
 		sfxOn.value = on
 		writeFlag(KEY_SFX, on)
-		if (this.ctx) this.sfx.gain.setTargetAtTime(on ? 1 : 0, this.ctx.currentTime, 0.05)
+		if (this.ctx) this.sfx.gain.setTargetAtTime(on ? SFX_LEVEL : 0, this.ctx.currentTime, 0.05)
 	}
 
 	setMusic(on: boolean) {
@@ -275,6 +291,8 @@ class SoundEngine {
 	 * часам контекста; нужен только офлайн-записи.
 	 */
 	play(name: Sfx, level = 1, when?: number) {
+		// Поздравление — музыка, а не щелчок: звучит, если включено хоть что-то.
+		if (name === 'win') return this.celebrate(when)
 		if (!this.ctx || !sfxOn.value) return
 		// Контекст ещё не проснулся (первое касание) — звук потерялся бы в очереди.
 		if (when === undefined && this.ctx.state !== 'running') return
@@ -313,12 +331,95 @@ class SoundEngine {
 			case 'whoosh':
 				this.hiss(t, 0.6, 0.05, 'bandpass', 500, 2400)
 				break
-			case 'win': {
-				const tune = [72, 76, 79, 84, 88, 91]
-				tune.forEach((n, i) => this.bell(t + i * 0.09, midi(n), 1.2, 0.12, this.sfx))
-				;[72, 79, 84].forEach((n) => this.bell(t + 0.62, midi(n), 2, 0.08, this.sfx))
-				break
-			}
+		}
+	}
+
+	/**
+	 * Поздравление за собранную картинку: короткая радостная мелодия с
+	 * аккордами и искрами наверху, около трёх с половиной секунд. Фоновая
+	 * музыка на это время приглушается и потом плавно возвращается.
+	 */
+	private celebrate(when?: number) {
+		if (!this.ctx || (!sfxOn.value && !musicOn.value)) return
+		if (when === undefined && this.ctx.state !== 'running') return
+		const t = when ?? this.ctx.currentTime + 0.05
+		const out = this.master
+
+		const g = this.music.gain
+		g.cancelScheduledValues(t)
+		g.setTargetAtTime(MUSIC_LEVEL * 0.12, t, 0.12)
+		g.setTargetAtTime(musicOn.value ? MUSIC_LEVEL : 0, t + 3.6, 0.9)
+
+		// До мажор: разбег вверх, мягкий спуск и тоника с задержанием.
+		const melody: [number, number, number][] = [
+			[0, 72, 0.6],
+			[0.16, 76, 0.6],
+			[0.32, 79, 0.6],
+			[0.48, 84, 1.1],
+			[0.8, 83, 0.6],
+			[0.96, 81, 0.6],
+			[1.12, 79, 0.7],
+			[1.28, 81, 0.7],
+			[1.44, 84, 2.2],
+		]
+		melody.forEach(([at, n, len]) => this.bell(t + at, midi(n), len, 0.2, out, 0.5))
+		const chords: [number, number[], number][] = [
+			[0, [60, 64, 67], 0.8],
+			[0.8, [65, 69, 72], 0.35],
+			[1.12, [67, 71, 74], 0.35],
+			[1.44, [60, 64, 67, 72], 2.2],
+		]
+		chords.forEach(([at, tones, len]) => {
+			tones.forEach((n, i) => this.voice('harp', t + at + i * 0.02, midi(n), len + 0.6, 0.07, out, 0.5))
+			this.bell(t + at, midi(tones[0] - 12), len + 0.4, 0.1, out, 0.3)
+		})
+		// Искры: быстрый перезвон на самом верху после финальной ноты.
+		;[96, 100, 103, 108, 103, 108].forEach((n, i) =>
+			this.bell(t + 1.8 + i * 0.09, midi(n), 0.6, 0.05, out, 0.6)
+		)
+	}
+
+	/**
+	 * Голос мелодии. box — стеклянная шкатулка; marimba — мягкий деревянный
+	 * удар на октаву ниже, короткий; harp — щипок с быстрым затуханием.
+	 */
+	private voice(kind: Voice, t: number, freq: number, dur: number, gain: number, out: AudioNode, wet: number) {
+		if (kind === 'box') return this.bell(t, freq, dur, gain, out, wet)
+		const ctx = this.ctx!
+		const env = ctx.createGain()
+		env.gain.setValueAtTime(0, t)
+		env.gain.linearRampToValueAtTime(gain, t + 0.004)
+		const len = kind === 'marimba' ? Math.min(dur, 0.9) : dur
+	// Щипок и удар затухают быстрее колокольчика — чтобы звучать вровень, громче на старте.
+	gain *= kind === 'marimba' ? 1.3 : 1.2
+		env.gain.exponentialRampToValueAtTime(0.0001, t + len)
+		const lp = ctx.createBiquadFilter()
+		lp.type = 'lowpass'
+		lp.frequency.value = kind === 'marimba' ? 1800 : 2600
+		env.connect(lp).connect(out)
+		const send = ctx.createGain()
+		send.gain.value = wet
+		lp.connect(send).connect(this.reverb)
+		const base = kind === 'marimba' ? freq / 2 : freq
+		const partials: [OscillatorType, number, number][] =
+			kind === 'marimba'
+				? [
+						['sine', 1, 1],
+						['sine', 4, 0.12],
+					]
+				: [
+						['triangle', 1, 1],
+						['sine', 2, 0.3],
+					]
+		for (const [type, mult, level] of partials) {
+			const osc = ctx.createOscillator()
+			osc.type = type
+			osc.frequency.value = base * mult
+			const g = ctx.createGain()
+			g.gain.value = level
+			osc.connect(g).connect(env)
+			osc.start(t)
+			osc.stop(t + len + 0.05)
 		}
 	}
 
@@ -328,7 +429,8 @@ class SoundEngine {
 		if (!this.ctx || this.timer) return
 		this.music.gain.cancelScheduledValues(this.ctx.currentTime)
 		this.music.gain.setTargetAtTime(MUSIC_LEVEL, this.ctx.currentTime, 0.8)
-		this.beginTrack(this.trackIndex, this.ctx.currentTime + 0.3)
+		// После выключения и включения — та же мелодия с начала, а не новая.
+		this.beginTrack(this.trackIndex < 0 ? this.nextTrack() : this.trackIndex, this.ctx.currentTime + 0.3)
 		this.timer = setInterval(() => this.schedule(), 120)
 	}
 
@@ -340,7 +442,25 @@ class SoundEngine {
 		this.timer = undefined
 	}
 
+	/**
+	 * Следующая мелодия: случайный порядок, но по очереди — пока не прозвучат
+	 * все, ни одна не повторится, и одна и та же не играет дважды подряд
+	 * даже на стыке двух перемешиваний.
+	 */
+	private nextTrack() {
+		if (!this.queue.length) {
+			this.queue = TRACKS.map((_, i) => i)
+			for (let i = this.queue.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1))
+				;[this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]]
+			}
+			if (this.queue[0] === this.trackIndex) this.queue.push(this.queue.shift()!)
+		}
+		return this.queue.shift()!
+	}
+
 	private beginTrack(index: number, at: number) {
+		if (index !== this.trackIndex) this.rounds = 0
 		this.trackIndex = index
 		this.notes = compose(TRACKS[index])
 		this.startAt = at
@@ -364,26 +484,36 @@ class SoundEngine {
 			const note = this.notes[this.nextNote]
 			const t = this.startAt + note.beat * beat
 			if (t > horizon) break
-			this.bell(t, midi(note.midi), 1.6 * note.len + 0.6, 0.07, this.music, 0.6)
+			this.voice(track.voice, t, midi(note.midi), 1.6 * note.len + 0.6, 0.07, this.music, 0.6)
 			this.nextNote++
 		}
 
 		// Круг кончился: ещё раз или следующая мелодия — после такта тишины.
 		const end = this.startAt + bars * 4 * beat
 		if (this.nextBar >= bars && this.nextNote >= this.notes.length && now > end - 0.2) {
-			this.loops++
-			const next = this.loops % 2 === 0 ? (this.trackIndex + 1) % TRACKS.length : this.trackIndex
+			this.rounds++
+			const next = this.rounds >= 2 ? this.nextTrack() : this.trackIndex
 			this.beginTrack(next, end + (next !== this.trackIndex ? 4 * beat : 0))
 		}
 	}
 
-	/** Мягкий аккорд на весь такт и бас на первую долю. */
+	/** Аккомпанемент такта: мягкий аккорд или перебор, и бас на первую долю. */
 	private chord(t: number, track: ITrack, degree: number, dur: number) {
 		const ctx = this.ctx!
 		const tones = [0, 2, 4].map((i) => {
 			const idx = degree + i
 			return track.root + MAJOR[idx % 7] + Math.floor(idx / 7) * 12
 		})
+		if (track.accomp === 'arp') {
+			// Перебор восьмыми: вверх по аккорду до октавы и обратно.
+			const up = [...tones, tones[0] + 12]
+			const pattern = [0, 1, 2, 3, 2, 1, 0, 1]
+			pattern.forEach((k, i) =>
+				this.voice('harp', t + (i * dur) / 8, midi(up[k]), dur / 3, 0.065, this.music, 0.5)
+			)
+			this.bell(t, midi(tones[0] - 12), dur * 0.8, 0.05, this.music, 0.3)
+			return
+		}
 		const lp = ctx.createBiquadFilter()
 		lp.type = 'lowpass'
 		lp.frequency.value = 900
@@ -416,24 +546,29 @@ export const sound = new SoundEngine()
  * файлом до сборки и проверить громкость. В игре не используется; вызывает
  * скрипт _docs/design/render-sounds.mjs.
  *
- * what — номер мелодии (0…2) или 'sfx' — все эффекты подряд.
+ * what — номер мелодии (0…5), 'sfx' — все эффекты подряд или 'win' —
+ * поздравление поверх играющей музыки (слышно, как она приглушается).
  */
-export async function renderSound(what: number | 'sfx', seconds: number) {
+export async function renderSound(what: number | 'sfx' | 'win', seconds: number) {
 	const rate = 44100
 	const offline = new OfflineAudioContext(2, rate * seconds, rate)
 	const engine = new SoundEngine() as any
 	engine.build(offline)
 	if (what === 'sfx') {
 		sfxOn.value = true
-		engine.sfx.gain.value = 1
+		engine.sfx.gain.value = SFX_LEVEL
 		const order: [Sfx, number][] = [
 			['crack', 1], ['whoosh', 1], ['pick', 1], ['rotate', 1], ['drop', 1],
-			['join', 2], ['join', 4], ['join', 8], ['full', 1], ['click', 1], ['win', 1],
+			['join', 2], ['join', 4], ['join', 8], ['full', 1], ['click', 1],
 		]
 		order.forEach(([name, level], i) => engine.play(name, level, 0.2 + i * 0.9))
 	} else {
 		engine.music.gain.value = MUSIC_LEVEL
-		engine.beginTrack(what, 0.3)
+		engine.beginTrack(what === 'win' ? 0 : what, 0.3)
+		if (what === 'win') {
+			musicOn.value = true
+			engine.celebrate(3)
+		}
 		for (let t = 0; t < seconds; t += 0.1) engine.schedule(t)
 	}
 	return offline.startRendering()

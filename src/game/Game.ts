@@ -139,10 +139,8 @@ class Game {
 
 		this.scene.addUpdate('tray', ({ deltaMS }) => {
 			if (this.gesture?.kind !== 'scroll') this.tray.update(deltaMS)
-			if (this.gesture?.kind === 'drag') {
-				const { group, offset } = this.gesture
-				group.view.position.set(this.pointer.x + offset.x, this.pointer.y + offset.y)
-			}
+			// Каждый кадр — ради анимации подъёма над пальцем (offset едет сам).
+			this.follow()
 		})
 		this.scene.onResize(() => {
 			if (this.phase === 'intro') this.layoutPending = true
@@ -242,15 +240,38 @@ class Game {
 		return { x: (p.x - this.board.x) / this.scale, y: (p.y - this.board.y) / this.scale }
 	}
 
-	/** Центр группы внутри стола над лотком; большая группа может свисать за край, но не уходит. */
+	/**
+	 * Куда поставить группу, чтобы она целиком осталась на столе над лотком.
+	 * Считаются центры всех её кусков с учётом поворота плюс полкуска запаса:
+	 * раньше в поле держался только центр группы, и большая группа могла
+	 * наполовину уехать за верхний край. Группа крупнее стола — по центру.
+	 */
 	private clampToField(group: Group, p: IPoint) {
 		const { width: W } = this.scene.app.screen
-		const r = group.size > 1 ? 30 : group.radius * this.scale * 0.6
-		const mx = Math.min(r, W / 2)
-		const my = Math.min(r * 0.6, this.tray.y / 2)
+		const a = (group.rot * Math.PI) / 2
+		const cos = Math.cos(a)
+		const sin = Math.sin(a)
+		const pivot = group.view.pivot
+		let minX = Infinity
+		let maxX = -Infinity
+		let minY = Infinity
+		let maxY = -Infinity
+		for (const piece of group.pieces) {
+			const dx = (piece.shape.center.x - pivot.x) * this.scale
+			const dy = (piece.shape.center.y - pivot.y) * this.scale
+			const x = dx * cos - dy * sin
+			const y = dx * sin + dy * cos
+			const r = piece.shape.radius * this.scale * 0.5
+			minX = Math.min(minX, x - r)
+			maxX = Math.max(maxX, x + r)
+			minY = Math.min(minY, y - r)
+			maxY = Math.max(maxY, y + r)
+		}
+		const axis = (v: number, lo: number, hi: number, min: number, max: number) =>
+			hi - lo >= max - min ? Math.min(hi - max, Math.max(lo - min, v)) : (lo + hi) / 2 - (min + max) / 2
 		return {
-			x: Math.min(W - mx, Math.max(mx, p.x)),
-			y: Math.min(this.tray.y - my, Math.max(my, p.y)),
+			x: axis(p.x, 4, W - 4, minX, maxX),
+			y: axis(p.y, 4, this.tray.y - 4, minY, maxY),
 		}
 	}
 
@@ -471,6 +492,18 @@ class Game {
 		}
 	}
 
+	/**
+	 * Кусок в руке — под пальцем. Вызывается и по движению пальца, и при
+	 * отпускании, а не только раз в кадр: если кадр запоздал (медленный
+	 * телефон, нагрузка), кусок в момент отпускания стоял бы там, где был кадр
+	 * назад, — у лотка, и игра сочла бы его брошенным обратно в ящик.
+	 */
+	private follow() {
+		if (this.gesture?.kind !== 'drag') return
+		const { group, offset } = this.gesture
+		group.view.position.set(this.pointer.x + offset.x, this.pointer.y + offset.y)
+	}
+
 	private onTrayDown(e: FederatedPointerEvent) {
 		if (this.phase !== 'play' || this.gesture) return
 		this.tray.stop()
@@ -481,6 +514,7 @@ class Game {
 		this.pointer = { x: e.global.x, y: e.global.y }
 		const g = this.gesture
 		if (!g) return
+		this.follow()
 
 		if (g.kind === 'tray-press') {
 			const dx = e.global.x - g.sx
@@ -511,7 +545,10 @@ class Game {
 		}
 	}
 
-	private onUp() {
+	private onUp(e?: FederatedPointerEvent) {
+		// Точка отпускания — из самого события, и кусок ставится ровно туда.
+		if (e) this.pointer = { x: e.global.x, y: e.global.y }
+		this.follow()
 		const g = this.gesture
 		this.gesture = null
 		if (!g) return
