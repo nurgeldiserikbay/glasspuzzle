@@ -1,5 +1,5 @@
 diff --git a/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java b/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
-index c6291395a02ca08db7dc3edd047ba57788aabab7..af9f0b7c9353ecaa4ac6803a6836a84309260a28 100644
+index c6291395a02ca08db7dc3edd047ba57788aabab7..08c2cd29c49985bcf484a88e7322df0554183e95 100644
 --- a/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
 +++ b/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
 @@ -110,13 +110,20 @@ public class BannerExecutor extends Executor {
@@ -30,7 +30,7 @@ index c6291395a02ca08db7dc3edd047ba57788aabab7..af9f0b7c9353ecaa4ac6803a6836a843
                      return insets;
                  });
              }
-@@ -298,6 +305,53 @@ public class BannerExecutor extends Executor {
+@@ -298,6 +305,63 @@ public class BannerExecutor extends Executor {
  
                  // Add AdViewLayout top of the WebView
                  mViewGroup.addView(mAdViewLayout);
@@ -65,14 +65,24 @@ index c6291395a02ca08db7dc3edd047ba57788aabab7..af9f0b7c9353ecaa4ac6803a6836a843
 +            mAdViewLayout != null &&
 +            mAdView != null &&
 +            mAdViewLayout.getParent() != null &&
-+            mAdViewLayout.getVisibility() == View.VISIBLE &&
-+            mAdView.getHeight() > 0
++            mAdViewLayout.getVisibility() == View.VISIBLE
 +        ) {
-+            int[] webAt = new int[2];
-+            int[] adAt = new int[2];
-+            web.getLocationOnScreen(webAt);
-+            mAdView.getLocationOnScreen(adAt);
-+            band = Math.max(0, webAt[1] + web.getHeight() - adAt[1]);
++            // Measured before the ad loads, not after: until then the AdView is
++            // empty and zero-height, the page learned the real room only once the
++            // banner was already drawn over the game, and then jumped. The adaptive
++            // size is known the moment showBanner runs, and the container is
++            // already in its final place (gravity + inset margin), so:
++            // band = WebView bottom - container bottom + banner height.
++            AdSize size = mAdView.getAdSize();
++            int adHeight = Math.max(mAdView.getHeight(), size != null ? size.getHeightInPixels(activity) : 0);
++            if (adHeight > 0) {
++                int[] webAt = new int[2];
++                int[] layoutAt = new int[2];
++                web.getLocationOnScreen(webAt);
++                mAdViewLayout.getLocationOnScreen(layoutAt);
++                int layoutBottom = layoutAt[1] + mAdViewLayout.getHeight();
++                band = Math.max(0, webAt[1] + web.getHeight() - layoutBottom + Math.max(adHeight, mAdViewLayout.getHeight()));
++            }
 +        }
 +        if (band == lastBandPx) return;
 +        lastBandPx = band;

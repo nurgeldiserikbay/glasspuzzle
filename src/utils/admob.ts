@@ -19,6 +19,8 @@ import { Fullscreen } from '@boengli/capacitor-fullscreen'
 const BANNER_AD_ID = 'ca-app-pub-9702825788968948/6780330065'
 /** Где запоминается высота баннера — чтобы с первого кадра держать под него место. */
 const SLOT_KEY = 'glass.adSlot'
+/** Где запоминается всё место, которое баннер занял от низа страницы. */
+const BAND_KEY = 'glass.adBand'
 const INTERSTITIAL_AD_ID = 'ca-app-pub-9702825788968948/9958658177'
 
 // Frequency cap: show an interstitial once every N level transitions instead of
@@ -133,9 +135,34 @@ class Admob {
 	 */
 	reserveBand() {
 		if (typeof document === 'undefined') return
-		const root = document.documentElement.style
+		const el = document.documentElement
+		const root = el.style
 		root.setProperty('--ad-inset', 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))')
 		this.setSlotHeight(null)
+
+		// Место, которое баннер в прошлый раз реально занял (его меряет сам
+		// Android, патч плагина в patches/, --ad-native-band). С ним резерв с
+		// первого кадра ровно нужный, и игре не приходится подстраиваться, когда
+		// баннер появляется. Расчёт по отступам остаётся только на самый первый
+		// запуск — на некоторых телефонах он меньше настоящего.
+		try {
+			const saved = Number(localStorage.getItem(BAND_KEY)) || 0
+			if (saved) root.setProperty('--ad-band-saved', `${saved}px`)
+		} catch {
+			// Нет хранилища — останется расчёт по отступам.
+		}
+		new MutationObserver(() => {
+			const px = parseInt(root.getPropertyValue('--ad-native-band'), 10)
+			// Только при новом значении: запись ниже сама меняет стиль и снова
+			// разбудила бы наблюдателя.
+			if (!px || root.getPropertyValue('--ad-band-saved') === `${px}px`) return
+			try {
+				localStorage.setItem(BAND_KEY, String(px))
+			} catch {
+				// Не запомним — в следующий раз снова расчёт по отступам.
+			}
+			root.setProperty('--ad-band-saved', `${px}px`)
+		}).observe(el, { attributes: true, attributeFilter: ['style'] })
 	}
 
 	/** Слот пуст: место остаётся той же высоты, но в нём снова кросс-промо. */
