@@ -1,5 +1,5 @@
 diff --git a/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java b/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
-index c6291395a02ca08db7dc3edd047ba57788aabab7..2075872a4c6307796379d0dbf05672998dadceab 100644
+index c6291395a02ca08db7dc3edd047ba57788aabab7..af9f0b7c9353ecaa4ac6803a6836a84309260a28 100644
 --- a/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
 +++ b/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
 @@ -110,13 +110,20 @@ public class BannerExecutor extends Executor {
@@ -30,3 +30,57 @@ index c6291395a02ca08db7dc3edd047ba57788aabab7..2075872a4c6307796379d0dbf0567299
                      return insets;
                  });
              }
+@@ -298,6 +305,53 @@ public class BannerExecutor extends Executor {
+ 
+                 // Add AdViewLayout top of the WebView
+                 mViewGroup.addView(mAdViewLayout);
++
++                // Glass Puzzle: report where the banner really is.
++                if (!bandListenerAdded) {
++                    bandListenerAdded = true;
++                    mViewGroup.getViewTreeObserver().addOnGlobalLayoutListener(this::publishBand);
++                }
++                mViewGroup.post(this::publishBand);
+             });
+     }
++
++    // Glass Puzzle: the page reserves room for the banner at its bottom, but it
++    // cannot see the native view. Computing that room from insets on the web side
++    // kept disagreeing with where the plugin actually put the banner (WebView
++    // versions, immersive mode, SystemBars padding), and the banner sat over the
++    // game. So after every layout we measure the distance from the banner's top
++    // edge to the WebView's bottom edge on screen and hand it to the page as the
++    // CSS variable --ad-native-band (dp = CSS px). No banner on screen - removed.
++    private boolean bandListenerAdded = false;
++    private int lastBandPx = -1;
++
++    private void publishBand() {
++        Activity activity = activitySupplier.get();
++        if (activity == null) return;
++        View web = activity.findViewById(com.getcapacitor.android.R.id.webview);
++        if (!(web instanceof android.webkit.WebView)) return;
++
++        int band = 0;
++        if (
++            mAdViewLayout != null &&
++            mAdView != null &&
++            mAdViewLayout.getParent() != null &&
++            mAdViewLayout.getVisibility() == View.VISIBLE &&
++            mAdView.getHeight() > 0
++        ) {
++            int[] webAt = new int[2];
++            int[] adAt = new int[2];
++            web.getLocationOnScreen(webAt);
++            mAdView.getLocationOnScreen(adAt);
++            band = Math.max(0, webAt[1] + web.getHeight() - adAt[1]);
++        }
++        if (band == lastBandPx) return;
++        lastBandPx = band;
++
++        float density = activity.getResources().getDisplayMetrics().density;
++        String js = band > 0
++            ? "document.documentElement.style.setProperty('--ad-native-band','" + Math.round(band / density) + "px')"
++            : "document.documentElement.style.removeProperty('--ad-native-band')";
++        ((android.webkit.WebView) web).evaluateJavascript(js, null);
++    }
+ }
