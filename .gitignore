@@ -26,3 +26,5 @@ dist-ssr
 
 # Прослушки звука, _docs/design/render-sounds.mjs
 _docs/design/sounds/
+# Диагностическая сборка рекламной полосы (AdDebug), не для выпуска
+_docs/ad-debug/

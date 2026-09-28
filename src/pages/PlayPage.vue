@@ -5,6 +5,10 @@ import { Capacitor } from '@capacitor/core'
 import BackLink from '@/components/BackLink.vue'
 import ResultTable from '@/components/ResultTable.vue'
 import AdSlot from '@/components/AdSlot.vue'
+import AdDebug from '@/components/AdDebug.vue'
+
+/** Диагностика рекламной полосы — только в сборке с VITE_AD_DEBUG=1. */
+const adDebug = import.meta.env.VITE_AD_DEBUG === '1'
 import OtherGames from '@/components/OtherGames.vue'
 import UiIcon from '@/components/UiIcon.vue'
 
@@ -253,6 +257,7 @@ function clearTimer() {
 		/>
 
 		<AdSlot :interactive="isWin" @open="isOtherGames = true" />
+		<AdDebug v-if="adDebug" />
 
 		<OtherGames v-if="isOtherGames" @close="isOtherGames = false" />
 	</div>
