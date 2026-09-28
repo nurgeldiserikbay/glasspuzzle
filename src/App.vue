@@ -13,6 +13,7 @@ import { useAdsStore } from '@/store/adsStore'
 import { usePageStore } from '@/store/pageStore'
 import { useGameStore } from '@/store/gameStore'
 import { sound } from '@/utils/sound'
+import { initRemoteLevels } from '@/game/remoteLevels'
 
 const adsStore = useAdsStore()
 const pageStore = usePageStore()
@@ -33,6 +34,10 @@ onMounted(async () => {
 
 	// Load saved progress on every platform (web included), not just Android
 	gameStore.loadData()
+
+	// Новые уровни с хостинга: скачанное раньше — сразу, свежее — в фоне, чуть
+	// позже старта, чтобы не спорить с ним за сеть и процессор.
+	setTimeout(() => void initRemoteLevels(), 1500)
 
 	if (Capacitor.getPlatform() === 'android') {
 		// Подписку ставим до initialize(): первое событие баннера может прийти

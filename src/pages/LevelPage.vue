@@ -5,7 +5,7 @@ import BackLink from '@/components/BackLink.vue'
 import UiIcon from '@/components/UiIcon.vue'
 import ShineTitle from '@/components/ShineTitle.vue'
 
-import LEVELS from '@/game/levels'
+import { allLevels } from '@/game/remoteLevels'
 import { PIECE_COUNT } from '@/game/shatter'
 import type { Difficulty } from '@/game/interfaces'
 
@@ -57,7 +57,7 @@ function setDifficulty(difficulty: Difficulty) {
 
 		<div class="level-page__levels">
 			<button
-				v-for="level in LEVELS"
+				v-for="level in allLevels"
 				:key="level.id"
 				class="level"
 				:class="getStatus(level.id) || 'locked'"

@@ -12,7 +12,7 @@ const adDebug = import.meta.env.VITE_AD_DEBUG === '1'
 import OtherGames from '@/components/OtherGames.vue'
 import UiIcon from '@/components/UiIcon.vue'
 
-import LEVELS from '@/game/levels'
+import { allLevels } from '@/game/remoteLevels'
 
 import { PAGES } from '@/utils/conts'
 
@@ -50,8 +50,8 @@ const benchShake = ref(false)
 
 const time = ref(0)
 const getTime = computed(() => setTimerValue(time.value))
-const getLevel = computed(() => LEVELS[gameStore.currentLevel])
-const hasNext = computed(() => gameStore.currentLevel < LEVELS.length - 1)
+const getLevel = computed(() => allLevels.value[gameStore.currentLevel])
+const hasNext = computed(() => gameStore.currentLevel < allLevels.value.length - 1)
 
 onMounted(async () => {
 	start()
@@ -97,7 +97,9 @@ async function start() {
 				isWin.value = true
 				clearTimer()
 				gameStore.updateGameStat(
-					getLevel.value.id,
+					// Номер уровня = его место в списке; запасной вариант на случай,
+					// если скачанный уровень пропал из списка посреди партии.
+					getLevel.value?.id ?? gameStore.currentLevel,
 					new Date().toString(),
 					getTime.value
 				)
@@ -152,6 +154,12 @@ function onDebug(e: Event) {
 
 function startLevel() {
 	if (!gameController) return
+	// Скачанный уровень мог пропасть (убран из списка, кэш вычищен) — тогда
+	// назад к выбору картинок, а не пустой экран.
+	if (!getLevel.value) {
+		pageStore.routeTo(PAGES.LEVEL)
+		return
+	}
 	isWin.value = false
 	time.value = 0
 	hint.value = ''
@@ -249,7 +257,7 @@ function clearTimer() {
 
 		<ResultTable
 			v-if="isWin"
-			:img="getLevel.src"
+			:img="getLevel?.src || ''"
 			:time="getTime"
 			:has-next="hasNext"
 			@next="nextLevel"

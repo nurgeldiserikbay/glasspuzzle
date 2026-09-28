@@ -2,7 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { Preferences } from '@capacitor/preferences'
 
-import LEVELS from '@/game/levels'
+import { allLevels } from '@/game/remoteLevels'
 
 export interface IGameStat {
 	date: string
@@ -24,7 +24,7 @@ export const useGameStore = defineStore('GameStore', () => {
 		return gameStats.value[id]
 	})
 	const lastSolved = computed(() => {
-		return LEVELS.find((l) => !isSolved.value(l.id))?.id
+		return allLevels.value.find((l) => !isSolved.value(l.id))?.id
 	})
 	watch(
 		() => gameStats.value,

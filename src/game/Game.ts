@@ -151,7 +151,11 @@ class Game {
 	async start({ img, difficulty }: { img: string; difficulty: Difficulty }) {
 		this.clear()
 		this.difficulty = difficulty
-		this.texture = await Assets.load<Texture>(img)
+		// Скачанные уровни приходят адресом в памяти (blob:) — у него нет
+		// расширения, и загрузчику надо сказать, что это картинка.
+		this.texture = await Assets.load<Texture>(
+			img.startsWith('blob:') ? { src: img, loadParser: 'loadTextures' } : img
+		)
 		// Пока грузилась картинка, игрок мог уйти со страницы.
 		if (this.board.destroyed) return
 
