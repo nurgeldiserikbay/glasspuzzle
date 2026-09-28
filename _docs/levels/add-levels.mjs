@@ -1,10 +1,10 @@
-// Добавить новые уровни на хостинг (репозиторий glasspuzzle-levels).
+// Добавить новые уровни на хостинг (репозиторий glasspuzzleimages).
 //
 //   node _docs/levels/add-levels.mjs путь/к/картинке1.jpg путь/к/картинке2.png ...
 //
 // Каждая картинка пережимается в WebP (длинная сторона — не больше 640, как у
-// встроенных уровней), кладётся в ../glasspuzzle-levels/img/ и дописывается в
-// levels.json со следующим номером. Потом в папке glasspuzzle-levels:
+// встроенных уровней), кладётся в ../glasspuzzleimages/img/ и дописывается в
+// levels.json со следующим номером. Потом в папке glasspuzzleimages:
 //   git add -A && git commit -m "Новые уровни" && git push
 // — и у игроков они подтянутся при следующем запуске с интернетом.
 //
@@ -20,7 +20,7 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 
 const ROOT = path.resolve(import.meta.dirname, '../..')
-const REPO = path.resolve(ROOT, '../glasspuzzle-levels')
+const REPO = path.resolve(ROOT, '../glasspuzzleimages')
 const JSON_FILE = path.join(REPO, 'levels.json')
 const BUILT_IN = 68
 const sharp = createRequire(path.join(ROOT, 'package.json'))(
@@ -32,7 +32,7 @@ if (!files.length) {
 	console.log('Укажите картинки: node _docs/levels/add-levels.mjs a.jpg b.png ...')
 	process.exit(1)
 }
-if (!fs.existsSync(JSON_FILE)) throw new Error(`Нет ${JSON_FILE} — сначала склонируйте glasspuzzle-levels рядом с игрой`)
+if (!fs.existsSync(JSON_FILE)) throw new Error(`Нет ${JSON_FILE} — сначала склонируйте glasspuzzleimages рядом с игрой`)
 
 const data = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8'))
 if (!Array.isArray(data.levels)) throw new Error('levels.json: нет массива levels')

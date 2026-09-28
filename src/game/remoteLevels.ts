@@ -6,7 +6,7 @@ import LEVELS from './levels'
  * Новые уровни с хостинга — без выпуска приложения.
  *
  * Встроенные 68 картинок лежат в самом приложении. Список дополнительных —
- * `levels.json` на GitHub Pages (репозиторий glasspuzzle-levels). Когда есть
+ * `levels.json` на GitHub Pages (репозиторий glasspuzzleimages). Когда есть
  * интернет, игра скачивает список и все новые картинки в фоне и складывает их
  * в Cache Storage — поэтому без сети потом играется всё, что уже скачано.
  *
@@ -28,7 +28,7 @@ export interface ILevel {
 
 /** Адрес списка; для проверки на своём сервере — VITE_LEVELS_URL при сборке. */
 export const LEVELS_URL: string =
-	import.meta.env.VITE_LEVELS_URL || 'https://nurgeldiserikbay.github.io/glasspuzzle-levels/levels.json'
+	import.meta.env.VITE_LEVELS_URL || 'https://nurgeldiserikbay.github.io/glasspuzzleimages/levels.json'
 
 const CACHE = 'glass-levels-v1'
 /** Последний полученный список — чтобы без сети знать, что лежит в кэше. */
