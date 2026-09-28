@@ -6,7 +6,7 @@ include ':boengli-capacitor-fullscreen'
 project(':boengli-capacitor-fullscreen').projectDir = new File('../node_modules/.pnpm/@boengli+capacitor-fullscreen@0.0.17/node_modules/@boengli/capacitor-fullscreen/android')
 
 include ':capacitor-community-admob'
-project(':capacitor-community-admob').projectDir = new File('../node_modules/.pnpm/@capacitor-community+admob@8.0.0/node_modules/@capacitor-community/admob/android')
+project(':capacitor-community-admob').projectDir = new File('../node_modules/.pnpm/@capacitor-community+admob@_5198e80036d8be44d7d84b44e31edb73/node_modules/@capacitor-community/admob/android')
 
 include ':capacitor-app'
 project(':capacitor-app').projectDir = new File('../node_modules/.pnpm/@capacitor+app@8.1.1_@capacitor+core@8.5.0/node_modules/@capacitor/app/android')

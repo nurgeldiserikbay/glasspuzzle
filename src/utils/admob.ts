@@ -109,7 +109,12 @@ class Admob {
 	private setBannerInset(on: boolean) {
 		if (typeof document === 'undefined') return
 		const root = document.documentElement.style
-		if (on) root.setProperty('--ad-inset', 'env(safe-area-inset-bottom, 0px)')
+		// Сначала — переменная, которую ставит SystemBars из Capacitor: она знает
+		// настоящий отступ при любой версии WebView. На WebView < 140 `env()`
+		// отдаёт ноль, хотя плагин рекламы поднимает баннер над панелью
+		// навигации, — и баннер наезжал на низ игры. `env()` — запасной вариант
+		// для веб-версии, где Capacitor переменную не ставит.
+		if (on) root.setProperty('--ad-inset', 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))')
 		else root.removeProperty('--ad-inset')
 	}
 

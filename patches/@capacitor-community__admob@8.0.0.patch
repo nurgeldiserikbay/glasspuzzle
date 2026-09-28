@@ -1,0 +1,32 @@
+diff --git a/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java b/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
+index c6291395a02ca08db7dc3edd047ba57788aabab7..2075872a4c6307796379d0dbf05672998dadceab 100644
+--- a/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
++++ b/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
+@@ -110,13 +110,20 @@ public class BannerExecutor extends Executor {
+                     int bottomInset = insets.getSystemWindowInsetBottom();
+                     int topInset = insets.getSystemWindowInsetTop();
+ 
+-                    if ("TOP_CENTER".equals(adOptions.position)) {
+-                        mAdViewLayoutParams.setMargins(0, topInset, 0, 0);
+-                    } else {
+-                        mAdViewLayoutParams.setMargins(0, 0, 0, bottomInset);
+-                    }
+-
+-                    mAdViewLayout.setLayoutParams(mAdViewLayoutParams);
++                    // Glass Puzzle: on WebView < 140 Capacitor's SystemBars already pads
++                    // the WebView's parent (this same view group) by the system insets.
++                    // Adding the full inset again as a margin lifted the banner a whole
++                    // navigation bar above the page bottom, over the game. Subtract the
++                    // parent's padding; it is set during the same insets dispatch, so read
++                    // it after the dispatch has finished.
++                    mViewGroup.post(() -> {
++                        if ("TOP_CENTER".equals(adOptions.position)) {
++                            mAdViewLayoutParams.setMargins(0, Math.max(0, topInset - mViewGroup.getPaddingTop()), 0, 0);
++                        } else {
++                            mAdViewLayoutParams.setMargins(0, 0, 0, Math.max(0, bottomInset - mViewGroup.getPaddingBottom()));
++                        }
++                        mAdViewLayout.setLayoutParams(mAdViewLayoutParams);
++                    });
+                     return insets;
+                 });
+             }
