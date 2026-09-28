@@ -17,6 +17,8 @@ import { Fullscreen } from '@boengli/capacitor-fullscreen'
 // TODO(owner): verify these are the correct PRODUCTION ad unit IDs for this app
 // in the AdMob console before release. Do not ship placeholder/test unit IDs.
 const BANNER_AD_ID = 'ca-app-pub-9702825788968948/6780330065'
+/** Где запоминается высота баннера — чтобы с первого кадра держать под него место. */
+const SLOT_KEY = 'glass.adSlot'
 const INTERSTITIAL_AD_ID = 'ca-app-pub-9702825788968948/9958658177'
 
 // Frequency cap: show an interstitial once every N level transitions instead of
@@ -83,47 +85,64 @@ class Admob {
 	 * adaptive-баннер на планшете вырастает почти вдвое против телефонного, и
 	 * фиксированный отступ под него промахивается.
 	 *
-	 * `null` — вернуться к резерву из вёрстки. Место при этом не исчезает: в
-	 * нём просто снова появляется кросс-промо.
+	 * Высота запоминается: при следующем запуске резерв сразу нужного размера,
+	 * и игровое поле не прыгает, когда баннер приходит. `null` — баннера нет;
+	 * место остаётся той же высоты, в нём снова кросс-промо.
 	 */
 	private setSlotHeight(px: number | null) {
 		if (typeof document === 'undefined') return
 		const root = document.documentElement.style
-		if (px === null) root.removeProperty('--ad-slot')
-		else root.setProperty('--ad-slot', `${Math.max(44, Math.round(px))}px`)
+		if (px !== null) {
+			const h = Math.max(44, Math.round(px))
+			try {
+				localStorage.setItem(SLOT_KEY, String(h))
+			} catch {
+				// Нет хранилища — просто не запомним, резерв останется 56px.
+			}
+			root.setProperty('--ad-slot', `${h}px`)
+			return
+		}
+		const saved = this.savedSlot()
+		if (saved) root.setProperty('--ad-slot', `${saved}px`)
+		else root.removeProperty('--ad-slot')
+	}
+
+	private savedSlot() {
+		try {
+			return Number(localStorage.getItem(SLOT_KEY)) || 0
+		} catch {
+			return 0
+		}
 	}
 
 	/**
-	 * Добавляет к рекламной зоне системный инсет — туда же, куда система
-	 * отодвинула баннер.
+	 * Держать место под баннер с самого старта, ещё до его прихода: высота из
+	 * прошлого запуска и зона системной навигации под ней.
 	 *
-	 * Ставится и снимается вместе с самим объявлением, а не один раз при
-	 * старте: когда баннера нет, отодвигать не подо что — в полосе стоит
-	 * кросс-промо, и лишний инсет оставит под ним пустую кромку.
+	 * Зона навигации резервируется всегда, а не только пока баннер на экране.
+	 * Плагин на Android 15+ ставит баннер выше неё (реклама не должна заходить
+	 * в зону жестов и кнопок), и раньше резерв рос на её высоту в момент
+	 * прихода баннера — поле сжималось скачком. Кросс-промо в той же зоне было
+	 * бы не лучше: касание по нему рядом с жестом «домой» — ровно те случайные
+	 * нажатия, от которых правило и защищает.
 	 *
-	 * Само число здесь не считается и не может: его знает браузер и отдаёт
-	 * через `env(safe-area-inset-bottom)`. Переменной присваивается выражение,
-	 * а не результат: инсет меняется вместе с системными панелями, и вычислять
-	 * его должен CSS. Требует `viewport-fit=cover` в `index.html`.
+	 * Отступ берётся из переменной SystemBars Capacitor: она знает настоящее
+	 * значение при любой версии WebView (на WebView < 140 `env()` отдаёт ноль).
+	 * `env()` — запасной вариант. Выражение, а не число: отступ меняется вместе
+	 * с системными панелями, считать его должен CSS.
 	 */
-	private setBannerInset(on: boolean) {
+	reserveBand() {
 		if (typeof document === 'undefined') return
 		const root = document.documentElement.style
-		// Сначала — переменная, которую ставит SystemBars из Capacitor: она знает
-		// настоящий отступ при любой версии WebView. На WebView < 140 `env()`
-		// отдаёт ноль, хотя плагин рекламы поднимает баннер над панелью
-		// навигации, — и баннер наезжал на низ игры. `env()` — запасной вариант
-		// для веб-версии, где Capacitor переменную не ставит.
-		if (on) root.setProperty('--ad-inset', 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))')
-		else root.removeProperty('--ad-inset')
+		root.setProperty('--ad-inset', 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))')
+		this.setSlotHeight(null)
 	}
 
-	/** Слот пуст: место остаётся, но в нём снова кросс-промо. */
+	/** Слот пуст: место остаётся той же высоты, но в нём снова кросс-промо. */
 	private clearBanner() {
 		this.bannerLoaded = false
 		this.bannerHeightPx = 0
 		this.setSlotHeight(null)
-		this.setBannerInset(false)
 		this.publishBanner(false)
 	}
 
@@ -175,7 +194,6 @@ class Admob {
 
 		AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
 			this.bannerLoaded = true
-			this.setBannerInset(true)
 			this.publishBanner(true, this.bannerHeightPx || BANNER_RESERVE_HEIGHT)
 		})
 
@@ -201,7 +219,6 @@ class Admob {
 				// состояние слота остаётся тем, какое было.
 				this.bannerHeightPx = size.height
 				this.setSlotHeight(size.height)
-				this.setBannerInset(true)
 				this.publishBanner(this.bannerLoaded, size.height)
 			}
 		)

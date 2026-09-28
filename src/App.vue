@@ -38,6 +38,8 @@ onMounted(async () => {
 		// Подписку ставим до initialize(): первое событие баннера может прийти
 		// раньше, чем страница успеет смонтироваться, и потеряться.
 		Admob.onBannerChange((live, height) => adsStore.setBanner(live, height))
+		// Место под баннер — с первого кадра, чтобы поле не прыгало, когда он придёт.
+		Admob.reserveBand()
 
 		void Admob.initialize().catch(() => {})
 		await Fullscreen.activateImmersiveMode()
