@@ -220,7 +220,7 @@ if (C) {
 	let q = byId(t, C.q.i)
 	// Место для куска может оказаться за краем стола или над лотком — тогда,
 	// как сделал бы игрок, сначала отодвигаем группу к середине стола.
-	const fieldBottom = box.height - 96 - 30
+	const fieldBottom = box.height - 120 - 30 // высота лотка на ширине 360
 	const w0 = expected(host, q, host.rot)
 	if (w0.y > fieldBottom || w0.y < 20 || w0.x < 20 || w0.x > box.width - 20) {
 		await fromField(host, { x: box.width / 2 + (host.x - w0.x), y: fieldBottom / 2 + (host.y - w0.y) })

@@ -182,7 +182,9 @@ class Game {
 		this.layoutPending = false
 		const { width: W, height: H } = this.scene.app.screen
 
-		const trayH = Math.round(Math.min(150, Math.max(96, W * 0.28)))
+		// Лоток крупный: куски в ящиках должно быть хорошо видно и удобно брать
+		// пальцем. На телефоне 360 — около 120px (ящик ~92), было 96 (ящик ~67).
+		const trayH = Math.round(Math.min(190, Math.max(118, W * 0.36)))
 		const trayY = H - trayH
 		// Над лотком оставлено место под плашку «стол», которую рисует страница.
 		const areaH = trayY - 34
@@ -214,7 +216,7 @@ class Game {
 		// кусок раздуло бы до размера крупного и размер перестал бы быть подсказкой.
 		const maxRadius = Math.max(...this.pieces.map((p) => p.shape.radius))
 		const box = trayH - 29
-		this.tray.layout(0, trayY, W, trayH, (box * 0.86) / (2 * maxRadius))
+		this.tray.layout(0, trayY, W, trayH, (box * 0.9) / (2 * maxRadius))
 
 		this.pieces.forEach((piece) => piece.draw(unit))
 		this.groups.forEach((group) => {
