@@ -29,6 +29,9 @@ const gameStore = useGameStore()
 
 let timer: ReturnType<typeof setInterval> | null = null
 let hintTimer: ReturnType<typeof setTimeout> | null = null
+/** Отложенный показ межстраничной рекламы после победы. */
+let adTimer: ReturnType<typeof setTimeout> | null = null
+const AD_AFTER_WIN_DELAY_MS = 1000
 const isWin = ref<boolean>(false)
 const isOtherGames = ref(false)
 
@@ -68,6 +71,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	clearTimer()
 	if (hintTimer) clearTimeout(hintTimer)
+	if (adTimer) clearTimeout(adTimer)
 	document.removeEventListener('visibilitychange', handleVisibilityChange)
 	if (Capacitor.getPlatform() === 'android') {
 		Admob.removeBanner()
@@ -108,8 +112,15 @@ async function start() {
 				// Раньше показ висел на кнопке перехода: объявление выходило в момент
 				// начала следующего уровня, и сам уровень ждал его закрытия. Частоту
 				// (каждый 3-й переход) по-прежнему считает рекламный модуль.
+				// Не в тот же миг, когда лёг последний кусок: палец ребёнка ещё на
+				// поле. Ждём секунду и показываем, только если экран итога всё ещё
+				// открыт.
 				if (Capacitor.getPlatform() === 'android') {
-					void Admob.interstitial()
+					if (adTimer) clearTimeout(adTimer)
+					adTimer = setTimeout(() => {
+						adTimer = null
+						if (isWin.value && gameController) void Admob.interstitial()
+					}, AD_AFTER_WIN_DELAY_MS)
 				}
 			},
 			onState: (s) => (state.value = s),

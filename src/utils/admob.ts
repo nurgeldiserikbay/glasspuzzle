@@ -26,6 +26,12 @@ const INTERSTITIAL_AD_ID = 'ca-app-pub-9702825788968948/9958658177'
 // Frequency cap: show an interstitial once every N level transitions instead of
 // on every single level (was too aggressive and risked policy issues).
 const INTERSTITIAL_LEVEL_INTERVAL = 3
+// ...and never more often than once per ~75 s (stamped only when an ad is
+// actually shown), so quick levels do not turn into an ad every minute.
+const INTERSTITIAL_MIN_INTERVAL_MS = 75_000
+// No fullscreen ads in the first minutes after launch: that is where most
+// players drop off in their first session.
+const INTERSTITIAL_GRACE_MS = 180_000
 
 // Last-resort guard in case Dismissed never arrives. It releases the game flow
 // only - never the system bars, because the ad may still be on screen and
@@ -177,6 +183,8 @@ class Admob {
 	private interstitialListenersReady = false
 	private interstitialPrepared = false
 	private levelTransitions = 0
+	private lastInterstitialAt = 0
+	private readonly startedAt = Date.now()
 	private pendingOnClosed: (() => void) | null = null
 	/** False while a show cycle is still considered active. */
 	private interstitialClosed = true
@@ -426,8 +434,11 @@ class Admob {
 		this.registerInterstitialListeners()
 		this.levelTransitions++
 
+		const now = Date.now()
 		const shouldShow =
-			this.levelTransitions % INTERSTITIAL_LEVEL_INTERVAL === 0
+			this.levelTransitions % INTERSTITIAL_LEVEL_INTERVAL === 0 &&
+			now - this.lastInterstitialAt >= INTERSTITIAL_MIN_INTERVAL_MS &&
+			now - this.startedAt >= INTERSTITIAL_GRACE_MS
 
 		// Not this transition's turn, or the ad simply isn't ready yet: don't block
 		// gameplay - advance immediately and make sure one is preloaded for later.
@@ -437,6 +448,7 @@ class Admob {
 			return
 		}
 
+		this.lastInterstitialAt = now
 		this.pendingOnClosed = done
 		this.interstitialClosed = false
 		this.sawBackgroundDuringShow = false
